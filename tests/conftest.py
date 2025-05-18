@@ -8,7 +8,12 @@ from unittest.mock import Mock
 
 from fakeredis import TcpFakeServer
 import pytest
-import redis
+from redis import Redis
+
+server_address = ("localhost", 7777)
+server = TcpFakeServer(server_address, server_type="redis")
+t = Thread(target=server.serve_forever, daemon=True)
+t.start()
 
 logger = logging.getLogger(__name__)
 
@@ -21,19 +26,12 @@ sys.path.append(root_loc)
 from mr_crawly.manager import Manager  # noqa
 
 
-server_address = ("localhost", 7777)
-server = TcpFakeServer(server_address, server_type="redis")
-t = Thread(target=server.serve_forever, daemon=True)
-t.start()
-
-cwd = os.getcwd()
-
 # from mr_crawly.config.configuration import get_logger  # noqa
 
 
 @pytest.fixture
 def redis_conn():
-    r = redis.Redis(host=server_address[0], port=server_address[1])
+    r = Redis(host=server_address[0], port=server_address[1])
     yield r
     r.close()
 
