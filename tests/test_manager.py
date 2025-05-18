@@ -1,34 +1,6 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import Mock
-
-import pytest
-from manager import Manager
-
-
-class MockManager(Manager):
-    def _init_db(self):
-        # Initialize databases
-        print(self.data_dir)
-        self.db_manager = Mock()
-
-    def _init_redis(self, host=None, port=None, redis_conn=None):
-        self.rdb = redis_conn
-
-
-@pytest.fixture
-def manager(redis_conn):
-    manager = MockManager(
-        seed_url="https://example.com",
-        max_pages=10,
-        retries=3,
-        debug=False,
-        db_file="test.db",
-        redis_conn=redis_conn,
-    )
-    yield manager
-    manager.shutdown()
 
 
 # @pytest.mark.skip(reason="Requires running Redis instance")

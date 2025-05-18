@@ -4,27 +4,9 @@ from unittest.mock import Mock
 
 import pytest
 from bs4 import BeautifulSoup
-from manager import Manager
-from mapper import SiteMapper
+from site_mapper import SiteMapper
 
-
-class MockManager(Manager):
-    def _init_db(self):
-        # Initialize databases
-        print(self.data_dir)
-        self.db_manager = Mock()
-
-
-@pytest.fixture
-def manager():
-    manager = MockManager(
-        host="localhost",
-        port=7777,
-        db_file="sqlite.db",
-        rdb_file="test.rdb",
-        run_id="test",
-    )
-    return manager
+from pytest_mock import MockerFixture
 
 
 @pytest.fixture
@@ -118,7 +100,7 @@ class TestSiteMapper:
         assert site_mapper.sitemap_details[0]["priority"] == "0.8"
         assert site_mapper.sitemap_details[0]["status"] == "Success"
 
-    def test_get_sitemap_urls(self, site_mapper, mocker):
+    def test_get_sitemap_urls(self, site_mapper, mocker: MockerFixture):
         mock_request = mocker.patch.object(site_mapper, "request_page")
         mock_request.return_value = """<?xml version="1.0" encoding="UTF-8"?>
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -135,7 +117,7 @@ class TestSiteMapper:
         assert len(details) == 1
         assert details[0]["loc"] == "https://example.com/page1"
 
-    def test_get_sitemap(self, site_mapper, mocker):
+    def test_get_sitemap(self, site_mapper, mocker: MockerFixture):
         mock_get_urls = mocker.patch.object(site_mapper, "get_sitemap_urls")
         mock_get_urls.return_value = (
             "https://example.com/sitemap.xml",

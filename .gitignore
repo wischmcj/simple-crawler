@@ -11,5 +11,6 @@ unused_code/recursive_sitemaps.py
 unused_code/events_db.py
 */sqlite.db
 *.rdb
-*simple_crawler/data/*
-unused_code/*
+*.db
+tests/data/*
+resources/scripts/graveyard/*
