@@ -5,12 +5,11 @@ docs/Engineering_Coding_Test.pdf
 *.log
 *.pyc
 google_sitemap.json
-simple_crawler/events.py
-data/sqlite.db
-unused_code/recursive_sitemaps.py
-unused_code/events_db.py
 */sqlite.db
+mr_crawly/events.py
 *.rdb
 *.db
 tests/data/*
 resources/scripts/graveyard/*
+data/test.db
+tests/data/*

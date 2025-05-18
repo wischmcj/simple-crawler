@@ -9,9 +9,14 @@ from site_mapper import SiteMapper
 from pytest_mock import MockerFixture
 
 
+class MockManager(SiteMapper):
+    def on_map_success(self, arg):
+        pass
+
+
 @pytest.fixture
 def site_mapper(manager):
-    return SiteMapper(manager=manager, seed_url="https://example.com")
+    return MockManager(manager=manager, seed_url="https://example.com")
 
 
 @pytest.fixture

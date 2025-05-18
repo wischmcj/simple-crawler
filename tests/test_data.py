@@ -5,9 +5,15 @@ import sqlite3
 import pytest
 import redis
 
-from simple_crawler.data import (BaseTable, DatabaseManager, Run, RunTable,
-                                 SitemapTable, UrlBulkWriter, UrlTable)
-
+from simple_crawler.data  import (
+    BaseTable,
+    DatabaseManager,
+    Run,
+    RunTable,
+    SitemapTable,
+    UrlBulkWriter,
+    UrlTable,
+)
 
 @pytest.fixture
 def db_file():
@@ -30,7 +36,15 @@ def db_manager(db_file):
 @pytest.fixture
 def base_table(conn):
     table = BaseTable(conn)
-    return table
+    table.cursor.execute("DROP TABLE IF EXISTS test")
+    table.table_name = "test"
+    table.columns = ["id", "name"]
+    table.types = ["INTEGER", "TEXT"]
+    table.primary_key = "id"
+    table.unique_keys = ["id"]
+    table.create_table()
+    yield table
+    table.cursor.execute("DROP TABLE IF EXISTS test")
 
 
 @pytest.fixture
@@ -110,12 +124,6 @@ def redis_conn():
 
 
 class TestBaseTable:
-    def setup(self):
-        self.base_table.cursor.execute("DROP TABLE IF EXISTS test").commit()
-
-    def teardown(self):
-        self.base_table.cursor.execute("DROP TABLE IF EXISTS test").commit()
-
     def test_build_create_string(self, base_table):
         base_table.table_name = "test"
         base_table.columns = ["id", "name"]
@@ -145,6 +153,34 @@ class TestBaseTable:
         )
         assert base_table.cursor.fetchone() is not None
 
+    def test_execute_query_no_results(self, base_table):
+        result = base_table.execute_query("SELECT * FROM test", return_results=False)
+        assert result is True
+
+    def test_execute_query_w_results(self, base_table):
+        result = base_table.execute_query("SELECT * FROM test", return_results=True)
+        assert isinstance(result, list)
+
+    def test_execute_query_success(self, base_table):
+        # Test successful query
+        result = base_table.execute_query(
+            "INSERT INTO test (name) VALUES (?)", ("test_name",)
+        )
+        assert result is True
+
+        result = base_table.execute_query("SELECT * FROM test", return_results=True)
+        assert result is not None
+        assert len(result) == 1
+        assert result[-1]["name"] == "test_name"
+
+    def test_execute_query_failure(self, base_table):
+        # Verify insert worked
+        # Test failed query
+        result = base_table.execute_query(
+            "INSERT INTO nonexistent_table VALUES (?)", ("test",)
+        )
+        assert result is False
+
 
 class TestUrlTable:
     def teardown(self):
@@ -155,15 +191,20 @@ class TestUrlTable:
 
         url_id = url_table.store_urls([url_data])
         assert url_id is not None
-        # Verify URL was stored
+
+        # Verify URL was stored based on id
         url_table.cursor.execute("SELECT * FROM urls WHERE id = ?", (url_id,))
         result = url_table.cursor.fetchone()
         assert result is not None
         assert result[1] == url_data["seed_url"]
 
-    def test_get_urls_for_seed_url(self, url_table, url_data):
-        seed_url = "http://example.com"
+        # Verify URL was stored
+        result = url_table.execute_query("SELECT * FROM urls", return_results=True)
+        assert result[-1]["id"] == url_id
+        assert result[-1]["seed_url"] == url_data["seed_url"]
 
+    def test_get_urls_for_seed_url(self, url_table, url_data):
+        seed_url = url_data["seed_url"]
         urls = url_table.get_urls_for_seed_url(seed_url)
         assert len(urls) == 1
         assert urls[0]["url"] == url_data["url"]

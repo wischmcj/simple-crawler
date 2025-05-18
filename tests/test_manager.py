@@ -3,13 +3,6 @@ from __future__ import annotations
 import os
 
 
-# @pytest.mark.skip(reason="Requires running Redis instance")
-def test_save_cache_integration(manager):
-    """Integration test for save_cache with real Redis"""
-    manager.save_cache()
-    assert os.path.exists(manager.rdb_path)
-
-
 def test_manager_initialization(manager):
     """Test manager initializes with correct attributes"""
     assert manager.seed_url == "https://example.com"

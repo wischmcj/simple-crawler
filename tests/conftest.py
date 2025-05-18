@@ -65,6 +65,19 @@ class MockManager(Manager):
     def _init_redis(self, host=None, port=None, redis_conn=None):
         self.rdb = redis_conn
 
+    def _init_cache(self):
+        self.cache = Mock()
+        self.crawl_tracker = Mock()
+
+    def _init_pubsub(self):
+        url_channel = "db"
+        # Initialize databases
+        # url_pubsub = self.rdb.pubsub()
+        url_pubsub = Mock()
+        url_pubsub.subscribe(url_channel)
+        self.url_pubsub = url_pubsub
+        return url_pubsub
+
     def save_cache(self):
         pass
 
