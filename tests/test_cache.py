@@ -1,21 +1,8 @@
 from __future__ import annotations
 
 import pytest
-import redis
-from threading import Thread
-from fakeredis import TcpFakeServer
 
 from simple_crawler.cache import CrawlStatus, CrawlTracker, URLCache, URLData
-
-server_address = ("localhost", 7777)
-server = TcpFakeServer(server_address, server_type="redis")
-t = Thread(target=server.serve_forever, daemon=True)
-t.start()
-
-
-@pytest.fixture
-def redis_conn():
-    return redis.Redis(host=server_address[0], port=server_address[1])
 
 
 @pytest.fixture
