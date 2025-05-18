@@ -183,7 +183,7 @@ class TestBaseTable:
 
 
 class TestUrlTable:
-    def teardown(self):
+    def teardown(self, url_table):
         url_table.cursor.execute("DELETE FROM urls")
 
     def test_store_url(self, url_table, url_data):
@@ -217,7 +217,7 @@ class TestUrlTable:
 
 
 class TestRunTable:
-    def teardown(self):
+    def teardown(self, run_table):
         run_table.cursor.execute("DELETE FROM runs")
 
     def test_start_run(self, run_table):
@@ -253,7 +253,7 @@ class TestRunTable:
 
 
 class TestSitemapTable:
-    def teardown(self):
+    def teardown(self, sitemap_table):
         sitemap_table.cursor.execute("DELETE FROM sitemaps")
 
     def test_store_sitemap(self, sitemap_table, sitemap_data):
