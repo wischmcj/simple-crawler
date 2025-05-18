@@ -65,6 +65,9 @@ class MockManager(Manager):
     def _init_redis(self, host=None, port=None, redis_conn=None):
         self.rdb = redis_conn
 
+    def save_cache(self):
+        pass
+
 
 @pytest.fixture
 def manager(redis_conn):
