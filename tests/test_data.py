@@ -61,22 +61,29 @@ def run():
 @pytest.fixture
 def run_table(conn):
     table = RunTable(conn)
+    table.cursor.execute("DROP TABLE IF EXISTS runs")
     table.create_table()
+    yield table
+    table.cursor.execute("DROP TABLE IF EXISTS runs")
     return table
 
 
 @pytest.fixture
 def url_table(conn):
     table = UrlTable(conn)
+    table.cursor.execute("DROP TABLE IF EXISTS urls")
     table.create_table()
-    return table
+    yield table
+    table.cursor.execute("DROP TABLE IF EXISTS urls")
 
 
 @pytest.fixture
 def sitemap_table(conn):
     table = SitemapTable(conn)
+    table.cursor.execute("DROP TABLE IF EXISTS sitemaps")
     table.create_table()
-    return table
+    yield table
+    table.cursor.execute("DROP TABLE IF EXISTS sitemaps")
 
 
 @pytest.fixture
@@ -183,12 +190,7 @@ class TestBaseTable:
 
 
 class TestUrlTable:
-    def teardown(self, url_table):
-        url_table.cursor.execute("DELETE FROM urls")
-
     def test_store_url(self, url_table, url_data):
-        url_table.cursor.execute("DELETE FROM urls")
-
         url_id = url_table.store_urls([url_data])
         assert url_id is not None
 
@@ -204,12 +206,14 @@ class TestUrlTable:
         assert result[-1]["seed_url"] == url_data["seed_url"]
 
     def test_get_urls_for_seed_url(self, url_table, url_data):
+        _ = url_table.store_urls([url_data])
         seed_url = url_data["seed_url"]
         urls = url_table.get_urls_for_seed_url(seed_url)
         assert len(urls) == 1
         assert urls[0]["url"] == url_data["url"]
 
     def test_get_urls_for_run(self, url_table, url_data):
+        _ = url_table.store_urls([url_data])
         run_id = "1"
         urls = url_table.get_urls_for_run(run_id)
         assert len(urls) == 1
@@ -217,11 +221,7 @@ class TestUrlTable:
 
 
 class TestRunTable:
-    def teardown(self, run_table):
-        run_table.cursor.execute("DELETE FROM runs")
-
     def test_start_run(self, run_table):
-        run_table.cursor.execute("DELETE FROM runs")
         run_id = "1"
         seed_url = "http://example.com"
         max_pages = 10
@@ -240,6 +240,9 @@ class TestRunTable:
 
     def test_complete_run(self, run_table):
         run_id = "1"
+        seed_url = "http://example.com"
+        max_pages = 10
+        _ = run_table.start_run(run_id, seed_url, max_pages)
         success = run_table.complete_run(run_id)
         assert success is True
 
@@ -253,11 +256,7 @@ class TestRunTable:
 
 
 class TestSitemapTable:
-    def teardown(self, sitemap_table):
-        sitemap_table.cursor.execute("DELETE FROM sitemaps")
-
     def test_store_sitemap(self, sitemap_table, sitemap_data):
-        sitemap_table.cursor.execute("DELETE FROM sitemaps")
         sitemap_table.store_sitemap_data(
             sitemap_data, seed_url="http://example.com", run_id="1"
         )
@@ -271,7 +270,6 @@ class TestSitemapTable:
         assert result[3] == sitemap_data["url"]
 
     def test_get_sitemaps_for_seed_url(self, sitemap_table, sitemap_data):
-        sitemap_table.cursor.execute("DELETE FROM sitemaps")
         sitemap_table.store_sitemap_data(
             sitemap_data, seed_url="http://example.com", run_id="1"
         )
