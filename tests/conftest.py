@@ -26,7 +26,19 @@ sys.path.append(root_loc)
 from mr_crawly.manager import Manager  # noqa
 
 
+DATA_DIR = "data"
+
 # from mr_crawly.config.configuration import get_logger  # noqa
+
+
+def create_dir(dir_name, exist_ok=False):
+    try:
+        os.makedirs(dir_name, exist_ok=exist_ok)
+    except FileExistsError:
+        if exist_ok:
+            pass
+        else:
+            raise FileExistsError(f"Directory '{dir_name}' already exists.")
 
 
 @pytest.fixture
@@ -41,6 +53,14 @@ class MockManager(Manager):
         # Initialize databases
         print(self.data_dir)
         self.db_manager = Mock()
+
+    def _init_dirs(self):
+        self.data_dir = os.path.join(os.path.dirname(__file__), DATA_DIR)
+        create_dir(self.data_dir, exist_ok=True)
+        self.data_dir = os.path.join(self.data_dir, f"{self.run_id}")
+        create_dir(self.data_dir, exist_ok=True)
+        self.rdb_path = os.path.join(self.data_dir, self.rdb_file)
+        self.sqlite_path = os.path.join(self.data_dir, self.db_file)
 
     def _init_redis(self, host=None, port=None, redis_conn=None):
         self.rdb = redis_conn
