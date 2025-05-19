@@ -6,7 +6,6 @@ import pytest
 
 from simple_crawler.downloader import SiteDownloader
 
-
 @pytest.fixture
 def mock_manager():
     manager = Mock()
