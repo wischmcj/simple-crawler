@@ -3,7 +3,8 @@ from __future__ import annotations
 import argparse
 
 from config.configuration import CHECK_EVERY, MAX_PAGES, RETRIES, get_logger
-from main import crawl
+
+from simple_crawler.crawling import crawl
 
 logger = get_logger("main")
 logger.info("Starting crawler")
