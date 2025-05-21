@@ -40,17 +40,18 @@ class Parser:
             # Only include URLs from the same domain
             if urlparse(absolute_url).netloc == urlparse(url).netloc:
                 links.add(absolute_url)
-                self.crawl_tracker.add_page_to_visit(absolute_url)
+                self.crawl_tracker.request_download(absolute_url)
         return links
 
     def on_success(self, url, links):
         """Callback for when a job succeeds"""
-        self.crawl_tracker.store_linked_urls(url, links)
-        _ = self.crawl_tracker.update_status(url, "parsed")
+        update_map = {'attrs': {"crawl_status": "parsed"}, 'linked_urls': links}
+        _ = self.crawl_tracker.update_url(url, update_map, close=True)
 
     def on_failure(self, url):
         """Callback for when a job fails"""
-        _ = self.crawl_tracker.update_status(url, "error")
+        update_map = {'attrs': {"crawl_status": "error"}}
+        _ = self.crawl_tracker.update_url(url, update_map, close=True)
 
     # Crawling Logic
     def parse(self, url, content):

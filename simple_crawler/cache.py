@@ -13,38 +13,12 @@ logger = get_logger("data")
 
 class CrawlStatus(Enum):
     """Enum for tracking URL crawl status"""
-
-    SITE_MAP = "map_site"
-    FRONTIER = "frontier"
-    PARSE = "parse"
-    DB = "db"
-    ERROR = "error"
-    CLOSED = "closed"
-    DISALLOWED = "disallowed"
-
-
-class UrlAttributes(Enum):
-    """Enum for tracking URL attributes"""
-
-    HTML = "html"
-    SITEMAP_FREQUENCY = "sitemap_frequency"
-    SITEMAP_PRIORITY = "sitemap_priority"
-    LAST_MODIFIED = "last_modified"
-    STATUS = "status"
-
-
-@dataclass
-class URLData:
-    """`Data` structure for URL metadata"""
-
-    # URL first enters the cache when it is 'visited'
-    # e.g. a download attempt is made
-    url: str
-    content: str = ""
-    req_status: CrawlStatus = CrawlStatus.FRONTIER
-    crawl_status: CrawlStatus = CrawlStatus.FRONTIER
-    run_id: str = ""
-
+    ERROR = -2
+    DISALLOWED = -1
+    FRONTIER = 0
+    DOWNLOADED = 1
+    PARSED = 2
+    CLOSED = 3
 
 class CrawlTracker:
     """Track the status of a URL"""
@@ -72,53 +46,35 @@ class CrawlTracker:
             self.rdb.publish("db", json.dumps(url_data))
         return url_data
 
-    def update_status(self, url: str, status: str, status_code: int = None) -> None:
+    async def update_url(self, url, url_data: dict, close=False) -> None:
         """
         Progresses the status of the URL through the crawl pipeline.
         If and error state is passed, the url is closed and removed from the cache.
         """
-        if status in ("error", "disallowed", "parse"):
-            url_data = self.urls.pop(url, {})
+        key = f'urls:{url}'
+        pipe=self.rdb.pipeline()
+        # updated all fields to redis in a single transaction
+        for field, value in url_data.items():
+            if field == 'attrs': 
+                pipe.hset(f'{key}:attrs', mapping=value)
+            elif field == 'linked_urls': 
+                pipe.lpush(f'{key}:linked_urls', *value)
+            else: 
+                pipe.set(f'{key}:{field}', value)
+        if not close:
+            return await pipe.hincrby(url, "crawl_status").execute()
         else:
-            url_data = self.urls.get(url, {})
-
-        if url_data.get("seed_url") != self.seed_url:
-            url_data["seed_url"] = self.seed_url
-        if url_data.get("run_id") != self.run_id:
-            url_data["run_id"] = self.run_id
-        if url_data.get("crawl_status") != "started":
-            url_data["crawl_status"] = "started"
-        if url_data.get("url") != url:
-            url_data["url"] = url
-
-        if status_code:
-            url_data["req_status"] = status_code
-
-        if status == "downloaded":
-            url_data["crawl_status"] = "parse"
-        elif status == "parsed":
-            url_data["crawl_status"] = "Finished"
-            self.close_url(url_data)
-        elif status == "error" or status == "disallowed":
-            url_data["crawl_status"] = status
-            self.close_url(url_data)
-        url_data["crawl_status"] = status
-        self.urls[url] = url_data
-        return url_data
-
-    def close_queue(self) -> None:
-        """Close the queue"""
-        self.sent_exit = True
+            await self.close_url(url, pipe)
 
     async def get_page_to_visit(self) -> list[str]:
         """Get all frontier seeds for a URL"""
         if self.completed_pages >= self.max_pages:
             logger.warning("Max pages reached, closing queue")
-            return None
-        url = self.rdb.lpop("to_visit")
+            return 'exit'
+        url = await self.rdb.lpop("to_visit")
         if url is not None:
             url = url.decode("utf-8")
-        return url or ""
+        return url
 
     async def request_download(self, url: str) -> None:
         """Used to request that a page be downloaded"""
