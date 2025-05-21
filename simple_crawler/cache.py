@@ -49,7 +49,7 @@ class URLData:
 class CrawlTracker:
     """Track the status of a URL"""
 
-    def __init__(self, manager, url_pubsub):
+    def __init__(self, manager):
         self.manager = manager
         self.rdb = manager.rdb
         self.seed_url = manager.seed_url

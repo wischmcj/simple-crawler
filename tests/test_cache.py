@@ -1,14 +1,8 @@
 from __future__ import annotations
 
 import pytest
-import redis
 
 from simple_crawler.cache import CrawlStatus, CrawlTracker, URLCache, URLData
-
-
-@pytest.fixture
-def redis_conn():
-    return redis.Redis(host="localhost", port=7777, decode_responses=False)
 
 
 @pytest.fixture
