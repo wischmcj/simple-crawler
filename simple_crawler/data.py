@@ -75,7 +75,7 @@ class DatabaseManager:
     def _init_db(self):
         # Initialize databases
         self.table_details = _get_table_details()
-        await self.create_tables()
+        self.create_tables()
         missing_tables = set(self.tables.keys()) - {"runs", "urls", "sitemaps"}
         if missing_tables:
             raise Exception(f"Missing tables: {missing_tables}")
