@@ -63,7 +63,7 @@ class SiteDownloader:
         if not self.can_fetch(url):
             msg = f"Skipping {url} (not allowed by robots.txt)"
             logger.info(msg)
-            self.on_failure(url, "disallowed", "", 403)
+            self.on_failure(url, "disallowed", 403)
             return None, 403
 
         # Get the page elementsupdate_urlupdate_url
@@ -77,6 +77,6 @@ class SiteDownloader:
             # and closed the url out, not passing it to the parser
             logger.error(f"Error getting {url}: {e}")
             if cache_results:
-                self.on_failure(url, "error", response.text, response.status_code)
+                self.on_failure(url, "error", response.status_code)
             raise e
         return response.text, response.status_code

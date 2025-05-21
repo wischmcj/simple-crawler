@@ -43,7 +43,7 @@ class Parser:
     def on_success(self, url, links):
         """Callback for when a job succeeds"""
         update_map = {"attrs": {"crawl_status": "parsed"}, "linked_urls": links}
-        _ = self.crawl_tracker.update_url(url, update_map, close=True)
+        _ = self.crawl_tracker.update_url(url, update_map)
 
     def on_failure(self, url):
         """Callback for when a job fails"""
@@ -59,7 +59,6 @@ class Parser:
         logger.debug(f"Parsing {url}")
         try:
             links = self.get_links_from_content(url, content)
-            logger.info(f"Found {len(links)} links in {url}")
             self.on_success(url, list(links))
         except Exception as e:
             logger.error(f"Error parsing {url}: {e}")
