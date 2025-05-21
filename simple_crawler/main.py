@@ -82,12 +82,11 @@ async def download_url_while_true(
                             )
                             check_every = check_every * 1.5
                             await asyncio.sleep(10)
+                    manager.crawl_tracker.add_page_visited(url)
                     if content is not None:
-                        needs_parsing = manager.crawl_tracker.request_parse(url)
-                        if needs_parsing:
-                            await asyncio.wait_for(
-                                parse_queue.put((url, content)), timeout=1
-                            )
+                        await asyncio.wait_for(
+                            parse_queue.put((url, content)), timeout=1
+                        )
                     logger.debug("try loop exit")
                 else:
                     empty_count += 1
