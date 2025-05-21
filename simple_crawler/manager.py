@@ -13,7 +13,7 @@ from data import DatabaseManager
 loc = os.path.dirname(__file__)
 sys.path.append(loc)
 
-from cache import CrawlTracker, URLCache  # noqa
+from cache import CrawlTracker  # noqa
 from config.configuration import REDIS_HOST  # noqa
 from config.configuration import (DATA_DIR, RDB_FILE, REDIS_PORT,
                                   SQLITE_DB_FILE, get_logger)
@@ -96,7 +96,6 @@ class Manager:
         self.db_manager = DatabaseManager(self.url_pubsub, self.sqlite_path)
 
     def _init_cache(self):
-        self.cache = URLCache(self.rdb)
         self.crawl_tracker = CrawlTracker(
             self.host, self.port, self.seed_url, self.run_id, self.max_pages
         )

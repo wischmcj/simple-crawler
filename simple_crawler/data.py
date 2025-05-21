@@ -17,14 +17,17 @@ RUNS_TABLE = "runs"
 
 
 class BulkDBWriter:
-    def __init__(self, tables: dict[str, BaseTable], batch_size=4):
+    def __init__(self, tables: dict[str, BaseTable], redis_conn, batch_size=4):
         self.tables = tables
+        self.redis_conn = redis_conn
         self.batch_size = batch_size
         self.to_write = defaultdict(list)
         self.running = True
 
-    async def store_data(self, table_name: str, data: dict) -> None:
+    async def store_data(self, table_name: str, data: dict = None, key: str = None) -> None:
         """Store URL data in database"""
+        if key is not None:
+            data = await self.process_key(key)
         self.to_write[table_name].append(data)
         print(f"Currently {len(self.to_write[table_name])} rows to write")
         if len(self.to_write[table_name]) > self.batch_size:
@@ -44,6 +47,18 @@ class BulkDBWriter:
             result = await table.db_operation(data=data, operation="insert")
             self.to_write[table_name] = []
             return result
+    
+    async def process_key(self, key: str):
+        pipe = self.redis_conn.pipeline()
+        pipe.lrange(f"{key}:linked_urls", 0, -1)
+        pipe.hgetall(f"{key}:attrs")
+        pipe.get(f"{key}:content")
+        pipe.delete(key)
+        linked_urls, attrs, content, _ = await pipe.execute()
+        url_data = await deserialize(attrs) # is this needed?
+        url_data['linked_urls'] = [url.decode("utf-8") for url in linked_urls]
+        url_data['content'] = content.decode("utf-8")
+        return url_data
 
     async def handle_message(self, channel: redis.client.PubSub):
         while self.running:
@@ -54,10 +69,8 @@ class BulkDBWriter:
                     await self.flush_data("all")
                     self.running = False
                     break
-                else:
-                    request = await deserialize(message.get("data", ""))
-                    kwargs = json.loads(request)
-                    await self.store_data(**kwargs)
+                kwargs = json.loads(message.get("data", b'{}'))
+                await self.store_data(**kwargs)
 
 
 class DatabaseManager:
@@ -76,7 +89,7 @@ class DatabaseManager:
             raise Exception(f"Missing tables: {missing_tables}")
         self.listeners = []
         self.futures = []
-        await self.add_listener(BulkDBWriter, (self.tables,))
+        await self.add_listener(BulkDBWriter, (self.tables, self.redis_conn))
 
     async def shutdown(self):
         """Shutdown the database manager"""

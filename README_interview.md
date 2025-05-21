@@ -43,6 +43,37 @@ These are more for brainstorming purposes than anything else.
   - the CrawlTracker class - a pubsub based 'backfeed' mechanism
     - Reasoning: Allows for database buffering while keeping updates to work items' (urls') status low-cost. Also provides a mechanism for sharing information across threads.
 
+## URL Data
+### Cache
+While a url is being processed, its data is stored in Redis. For efficiency's sake, each url's data is stored as shown below:
+- Every url requested for downloading has a key nested under the 'urls' key
+  - 'urls:<url>' - in general
+  - 'urls:https://www.web.com' - for a given url 'https://www.web.com'
+- Under each url's key, there are three data structures
+  - 'urls:<url>:attrs' - a hashmap (dictionary) with attributes:
+    - seed_url
+    - run_id
+    - crawl_status
+    - max_pages
+  - 'urls:<url>:linked_urls' - a list of links contained by the url
+  - 'urls:<url>:content' - the hash of the html content of the url's page
+
+These are set as shown below: 
+``` bash 
+    url = "https://www.example.com"
+    content = "<html>Test</html>"
+    mapping = { "seed_url": "http://example.com", "req_status": 200, ...} 
+    linked_urls =["https://github.com","https://github.com/abc",]
+    await r.set(f"urls:{url}:content", content)
+    await r.hset(f"urls:{url}:attrs", mapping=mapping)
+    await r.lpush(f"urls:{url}:linked_urls", *linked_urls)
+```
+
+### Sqlite 
+##### TO-DO #####
+
+
+
 ## 'Synchronicity', concurrency and threading
 - Prior to running the core event loop, asyncronus pre-processing step looks for and processes the domain's sitemap (see the SiteMapper class).
   - Reasoning: As per assumption 3, it is beneficial to only store/ingest pertinent data. Larger sites such as google.com have a plethora of less than useful webpages that take up unwarranted space and processing time if not avoided. Sitemaps allow us to do so.
