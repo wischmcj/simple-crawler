@@ -65,7 +65,7 @@ async def download_url_while_true(
         try:
             # Check redis list for new pages needing to be visited
             url = manager.crawl_tracker.get_page_to_visit()
-            if url == 0:
+            if url == "exit":
                 logger.info("No more pages to visit, closing queue")
                 running = False
             for _ in range(retries):
@@ -82,11 +82,12 @@ async def download_url_while_true(
                             )
                             check_every = check_every * 1.5
                             await asyncio.sleep(10)
-                    manager.crawl_tracker.add_page_visited(url)
                     if content is not None:
-                        await asyncio.wait_for(
-                            parse_queue.put((url, content)), timeout=1
-                        )
+                        needs_parsing = manager.crawl_tracker.request_parse(url)
+                        if needs_parsing:
+                            await asyncio.wait_for(
+                                parse_queue.put((url, content)), timeout=1
+                            )
                     logger.debug("try loop exit")
                 else:
                     empty_count += 1
@@ -140,8 +141,10 @@ def crawl(
     retries: int = 3,
     write_to_db: bool = True,
     check_every: float = 0.5,
+    flush_cache: bool = True,
 ):
-    # main()
+    if flush_cache:
+        manager.rdb.flushall()
     atexit.register(manager.shutdown)
     manager.set_seed_url(seed_url)
     manager.set_max_pages(max_pages)

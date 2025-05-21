@@ -2,75 +2,64 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import time
-from dataclasses import dataclass
-from threading import Event
 
 from config.configuration import _get_table_details, get_logger
-from helper_classes import BaseListener
 
 logger = get_logger("data")
-exit_event = Event()
+
+STOPWORD = b"exit"
+RUNS_TABLE = "runs"
 
 
-class UrlBulkWriter(BaseListener):
-    def __init__(self, pubsub, db_file, batch_size=5):
-        """Initialize with a Redis pubsub object"""
-        self.conn = sqlite3.connect(db_file, check_same_thread=False)
-        self.pubsub = pubsub
+class BulkDBWriter:
+    def __init__(self, tables: dict[str, BaseTable], batch_size=4):
+        self.tables = tables
         self.batch_size = batch_size
-        self.urls_to_write = []
-        self.url_db = UrlTable(self.conn)
-        self.url_db.create_table()
-        self.running: bool = True
+        self.to_write = defaultdict(list)
+        self.running = True
 
-    def store_url(self, url_data: dict) -> None:
+    async def store_data(self, table_name: str, data: dict) -> None:
         """Store URL data in database"""
-        self.urls_to_write.append(url_data)
-        logger.debug(f"Currently {len(self.urls_to_write)} urls to write")
-        if len(self.urls_to_write) > self.batch_size:
-            self.url_db.store_urls(self.urls_to_write)
-            self.urls_to_write = []
+        self.to_write[table_name].append(data)
+        print(f"Currently {len(self.to_write[table_name])} rows to write")
+        if len(self.to_write[table_name]) > self.batch_size:
+            await self.flush_data(table_name)
+            self.to_write[table_name] = []
 
-    def get_urls_for_seed_url(self, seed_url: str) -> list[dict]:
-        """Get all URL records for a given seed URL"""
-        return self.url_db.get_urls_for_seed_url(seed_url)
+    async def flush_data(self, table_name):
+        """Builds and insert query and executes it"""
+        logger.info("Flushing data...")
+        tables = [(table_name, self.tables[table_name])] 
+        if table_name == "all":
+            tables = self.to_write.items()
 
-    def get_urls_for_run(self, run_id: str) -> list[dict]:
-        """Get all URL records for a given run ID"""
-        return self.url_db.get_urls_for_run(run_id)
+        for table_name, data in tables:
+            table = self.tables[table_name]
+            result = await table.db_operation(data=data, operation="insert")
+            self.to_write[table.table_name] = []
+            return result
 
-    def flush_urls(self) -> None:
-        """Flush the URLs to the database"""
-        logger.debug("Flushing URLs to database")
-        self.url_db.store_urls(self.urls_to_write)
-        self.urls_to_write = []
-        logger.debug("Closing connection to database")
-
-    def handle_message(self):
+    async def handle_message(self, channel: redis.client.PubSub):
         while self.running:
-            for message in self.pubsub.listen():
-                logger.debug(f"Received message: {message}")
-                if message["type"] == "message":
-                    if message["data"] == b"exit":
-                        self.running = False
-                        break
-                    else:
-                        url_data = json.loads(message.get("data", ""))
-                        self.store_url(url_data)
-        self.flush_urls()
-        exit_event.set()
+            message = await channel.get_message(ignore_subscribe_messages=True)
+            logger.debug(f"Received message: {message}")
+            if message is not None:
+                if message["data"] == STOPWORD:
+                    self.running = False
+                    break
+                else:
+                    request = await deserialize(message.get("data", ""))
+                    kwargs = json.loads(request)
+                    await self.store_data(**kwargs)
+        await self.flush_data("all")
 
 
 class DatabaseManager:
-    def __init__(self, url_pubsub, db_file="data/db.sqlite"):
-        self.conn = sqlite3.connect(db_file, check_same_thread=False)
+    def __init__(self, redis_conn, db_file="data/db.sqlite"):
         self.db_file = db_file
         self.redis_conn = redis_conn
         self.tables = {}
         self._init_db()
-        self.urls_to_write = []
-        self.write_every = 10
 
     def _init_db(self):
         # Initialize databases
@@ -80,18 +69,20 @@ class DatabaseManager:
         if missing_tables:
             raise Exception(f"Missing tables: {missing_tables}")
         self.listeners = []
-        self.add_listener(self.url_pubsub, UrlBulkWriter, (self.db_file,))
+        self.futures = []
+        self.add_listener(BulkDBWriter, (self.tables,))
 
     def shutdown(self):
         """Shutdown the database manager"""
         logger.info("Shutting down database manager")
-        self.conn.close()
+        self.redis_conn.publish("writer", STOPWORD)
 
-    def add_listener(self, pubsub, listener_cls, args=()):
-        logger.info(f"Subscribed to {pubsub}. Waiting for messages...")
-        handler = listener_cls(pubsub, *args)
-        handler.start()
-        self.listeners.append(handler)
+    def add_listener(self, listener_cls, args=()):
+        pubsub = self.redis_conn.pubsub()
+        pubsub.subscribe("writer")
+        writer = listener_cls(*args)
+        asyncio.run(writer.handle_message(pubsub))
+        self.listeners.append(writer)
 
     def create_tables(self):
         for details in self.table_details:
