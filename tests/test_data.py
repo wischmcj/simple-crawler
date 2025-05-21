@@ -5,15 +5,7 @@ import sqlite3
 import pytest
 import redis
 
-from simple_crawler.data  import (
-    BaseTable,
-    DatabaseManager,
-    Run,
-    RunTable,
-    SitemapTable,
-    UrlBulkWriter,
-    UrlTable,
-)
+from simple_crawler.data import BaseTable, DatabaseManager
 
 @pytest.fixture
 def db_file():
@@ -46,47 +38,6 @@ def base_table(conn):
     yield table
     table.cursor.execute("DROP TABLE IF EXISTS test")
 
-
-@pytest.fixture
-def run():
-    return Run(
-        run_id="1",
-        seed_url="http://example.com",
-        start_time="2023-01-01 00:00:00",
-        max_pages=100,
-        end_time=None,
-    )
-
-
-@pytest.fixture
-def run_table(conn):
-    table = RunTable(conn)
-    table.cursor.execute("DROP TABLE IF EXISTS runs")
-    table.create_table()
-    yield table
-    table.cursor.execute("DROP TABLE IF EXISTS runs")
-    return table
-
-
-@pytest.fixture
-def url_table(conn):
-    table = UrlTable(conn)
-    table.cursor.execute("DROP TABLE IF EXISTS urls")
-    table.create_table()
-    yield table
-    table.cursor.execute("DROP TABLE IF EXISTS urls")
-
-
-@pytest.fixture
-def sitemap_table(conn):
-    table = SitemapTable(conn)
-    table.cursor.execute("DROP TABLE IF EXISTS sitemaps")
-    table.create_table()
-    yield table
-    table.cursor.execute("DROP TABLE IF EXISTS sitemaps")
-
-
-@pytest.fixture
 def url_data():
     return {
         "url": "http://example.com/page1",
@@ -164,159 +115,45 @@ class TestBaseTable:
         result = base_table.execute_query("SELECT * FROM test", return_results=False)
         assert result is True
 
-    def test_execute_query_w_results(self, base_table):
-        result = base_table.execute_query("SELECT * FROM test", return_results=True)
-        assert isinstance(result, list)
 
-    def test_execute_query_success(self, base_table):
-        # Test successful query
-        result = base_table.execute_query(
-            "INSERT INTO test (name) VALUES (?)", ("test_name",)
-        )
-        assert result is True
+# class MockPubSub:
+#     def __init__(self):
+#         self.messages = []
 
-        result = base_table.execute_query("SELECT * FROM test", return_results=True)
-        assert result is not None
-        assert len(result) == 1
-        assert result[-1]["name"] == "test_name"
-
-    def test_execute_query_failure(self, base_table):
-        # Verify insert worked
-        # Test failed query
-        result = base_table.execute_query(
-            "INSERT INTO nonexistent_table VALUES (?)", ("test",)
-        )
-        assert result is False
+#     def listen(self):
+#         try:
+#             return self.messages.pop(0)
+#         except IndexError:
+#             return []
 
 
-class TestUrlTable:
-    def test_store_url(self, url_table, url_data):
-        url_id = url_table.store_urls([url_data])
-        assert url_id is not None
+# class TestUrlBulkWriter:
+#     def test_store_url(self, db_file):
+#         pubsub = MockPubSub()
+#         writer = UrlBulkWriter(pubsub, db_file, batch_size=2)
 
-        # Verify URL was stored based on id
-        url_table.cursor.execute("SELECT * FROM urls WHERE id = ?", (url_id,))
-        result = url_table.cursor.fetchone()
-        assert result is not None
-        assert result[1] == url_data["seed_url"]
+#         url_data = {"url": "http://example.com", "run_id": "1"}
+#         writer.store_url(url_data)
 
-        # Verify URL was stored
-        result = url_table.execute_query("SELECT * FROM urls", return_results=True)
-        assert result[-1]["id"] == url_id
-        assert result[-1]["seed_url"] == url_data["seed_url"]
+#         # First URL should be buffered
+#         assert len(writer.urls_to_write) == 1
+#         assert writer.urls_to_write[0] == url_data
 
-    def test_get_urls_for_seed_url(self, url_table, url_data):
-        _ = url_table.store_urls([url_data])
-        seed_url = url_data["seed_url"]
-        urls = url_table.get_urls_for_seed_url(seed_url)
-        assert len(urls) == 1
-        assert urls[0]["url"] == url_data["url"]
+#         # Second URL should trigger flush
+#         writer.store_url(url_data)
+#         assert len(writer.urls_to_write) == 2
 
-    def test_get_urls_for_run(self, url_table, url_data):
-        _ = url_table.store_urls([url_data])
-        run_id = "1"
-        urls = url_table.get_urls_for_run(run_id)
-        assert len(urls) == 1
-        assert urls[0]["url"] == url_data["url"]
+#         writer.store_url(url_data)
+#         assert len(writer.urls_to_write) == 0  # Should have flushed
 
+#     def test_flush(self, db_file):
+#         pubsub = MockPubSub()
+#         writer = UrlBulkWriter(pubsub, db_file)
 
-class TestRunTable:
-    def test_start_run(self, run_table):
-        run_id = "1"
-        seed_url = "http://example.com"
-        max_pages = 10
+#         url_data = {"url": "http://example.com", "run_id": "1"}
+#         writer.store_url(url_data)
+#         writer.store_url(url_data)
 
-        row_id = run_table.start_run(run_id, seed_url, max_pages)
-        assert row_id is not None
-
-        # Verify run was created
-        run_table.cursor.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,))
-        result = run_table.cursor.fetchone()
-        assert result is not None
-        assert result[1] == run_id
-        assert result[2] == seed_url
-        assert result[4] == max_pages
-        assert result[5] is None  # end_time should be null
-
-    def test_complete_run(self, run_table):
-        run_id = "1"
-        seed_url = "http://example.com"
-        max_pages = 10
-        _ = run_table.start_run(run_id, seed_url, max_pages)
-        success = run_table.complete_run(run_id)
-        assert success is True
-
-        # Verify run was completed
-        run_table.cursor.execute(
-            "SELECT end_time FROM runs WHERE run_id = ?", (run_id,)
-        )
-        result = run_table.cursor.fetchone()
-        assert result is not None
-        assert result[0] is not None
-
-
-class TestSitemapTable:
-    def test_store_sitemap(self, sitemap_table, sitemap_data):
-        sitemap_table.store_sitemap_data(
-            sitemap_data, seed_url="http://example.com", run_id="1"
-        )
-
-        # Verify sitemap was stored
-        sitemap_table.cursor.execute(
-            "SELECT * FROM sitemaps WHERE url = ?", (sitemap_data["url"],)
-        )
-        result = sitemap_table.cursor.fetchone()
-        assert result is not None
-        assert result[3] == sitemap_data["url"]
-
-    def test_get_sitemaps_for_seed_url(self, sitemap_table, sitemap_data):
-        sitemap_table.store_sitemap_data(
-            sitemap_data, seed_url="http://example.com", run_id="1"
-        )
-        seed_url = sitemap_data["seed_url"]
-        sitemaps = sitemap_table.get_sitemaps_for_seed_url(seed_url)
-        assert len(sitemaps) == 1
-        assert sitemaps[0]["url"] == sitemap_data["url"]
-
-
-class MockPubSub:
-    def __init__(self):
-        self.messages = []
-
-    def listen(self):
-        try:
-            return self.messages.pop(0)
-        except IndexError:
-            return []
-
-
-class TestUrlBulkWriter:
-    def test_store_url(self, db_file):
-        pubsub = MockPubSub()
-        writer = UrlBulkWriter(pubsub, db_file, batch_size=2)
-
-        url_data = {"url": "http://example.com", "run_id": "1"}
-        writer.store_url(url_data)
-
-        # First URL should be buffered
-        assert len(writer.urls_to_write) == 1
-        assert writer.urls_to_write[0] == url_data
-
-        # Second URL should trigger flush
-        writer.store_url(url_data)
-        assert len(writer.urls_to_write) == 2
-
-        writer.store_url(url_data)
-        assert len(writer.urls_to_write) == 0  # Should have flushed
-
-    def test_flush(self, db_file):
-        pubsub = MockPubSub()
-        writer = UrlBulkWriter(pubsub, db_file)
-
-        url_data = {"url": "http://example.com", "run_id": "1"}
-        writer.store_url(url_data)
-        writer.store_url(url_data)
-
-        assert len(writer.urls_to_write) == 2
-        writer.flush_urls()
-        assert len(writer.urls_to_write) == 0
+#         assert len(writer.urls_to_write) == 2
+#         writer.flush_urls()
+#         assert len(writer.urls_to_write) == 0

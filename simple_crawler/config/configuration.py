@@ -15,6 +15,9 @@ sys.path.append(loc)
 log_config = os.environ.get(
     "SIMPLE_CRAWLER_LOG_CONFIG", f"{loc}/config/logging_config.yml"
 )
+sqlite_config = os.environ.get(
+    "SIMPLE_CRAWLER_SQLITE_CONFIG", f"{loc}/config/sqlite.yml"
+)
 
 REDIS_PORT = os.environ.get("REDIS_PORT", 7777)
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
@@ -72,3 +75,27 @@ def get_logger(logger_name: str, log_file: str = None, log_level: int = logging.
             return return_logger
     else:
         return return_logger
+
+
+def _get_table_details():
+    with open(sqlite_config) as f:
+        config = yaml.safe_load(f.read())
+    table_details = []
+    for table_name, table_data in config["tables"].items():
+        column_data = table_data.get("columns", {})
+        columns = [x for x in column_data.keys()]
+        types = [meta["sqlite_type"] for meta in column_data.values()]
+        primary_key = [x for x in columns if column_data[x].get("primary_key", False)]
+        unique_keys = [x for x in columns if column_data[x].get("unique", False)]
+
+        table_details.append(
+            {
+                "db_file": table_data.get("db_file", "data/db.sqlite"),
+                "table_name": table_name,
+                "columns": columns,
+                "types": types,
+                "primary_key": primary_key,
+                "unique_keys": unique_keys,
+            }
+        )
+    return table_details

@@ -1,0 +1,95 @@
+# SQLite table definitions for simple_crawler
+
+tables:
+  runs:
+    db_file: "data/db.sqlite"
+    name: "runs"
+    columns:
+      id:
+        type: "int"
+        sqlite_type: "INTEGER PRIMARY KEY AUTOINCREMENT"
+        primary_key: true
+        unique: true
+      run_id:
+        type: "str"
+        sqlite_type: "TEXT"
+      max_pages:
+        type: "int"
+        sqlite_type: "INTEGER"
+      seed_url:
+        type: "str"
+        sqlite_type: "TEXT"
+      event:
+        type: "str"
+        sqlite_type: "TEXT"
+      event_time:
+        type: "datetime"
+        sqlite_type: "TIMESTAMP"
+
+  urls:
+    db_file: "data/db.sqlite"
+    name: "urls"
+    columns:
+      id:
+        type: "int"
+        sqlite_type: "INTEGER PRIMARY KEY AUTOINCREMENT"
+        primary_key: true
+        unique: true
+      seed_url:
+        type: "str"
+        sqlite_type: "TEXT"
+      url:
+        type: "str"
+        sqlite_type: "TEXT"
+      content:
+        type: "str"
+        sqlite_type: "BLOB"
+      req_status:
+        type: "str"
+        sqlite_type: "TEXT"
+      crawl_status:
+        type: "str"
+        sqlite_type: "TEXT"
+      run_id:
+        type: "str"
+        sqlite_type: "TEXT"
+      linked_urls:
+        type: "list[str]"
+        sqlite_type: "BLOB"
+
+  sitemaps:
+    db_file: "data/db.sqlite"
+    name: "sitemaps"
+    columns:
+      id:
+        type: "int"
+        sqlite_type: "INTEGER PRIMARY KEY AUTOINCREMENT"
+        primary_key: true
+        unique: true
+      run_id:
+        type: "str"
+        sqlite_type: "TEXT"
+      seed_url:
+        type: "str"
+        sqlite_type: "TEXT"
+      url:
+        type: "str"
+        sqlite_type: "TEXT"
+      index_url:
+        type: "str"
+        sqlite_type: "TEXT"
+      loc:
+        type: "str"
+        sqlite_type: "TEXT"
+      priority:
+        type: "str"
+        sqlite_type: "TEXT"
+      frequency:
+        type: "str"
+        sqlite_type: "TEXT"
+      modified:
+        type: "datetime"
+        sqlite_type: "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      status:
+        type: "str"
+        sqlite_type: "TEXT"
