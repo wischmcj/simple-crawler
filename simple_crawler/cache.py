@@ -29,22 +29,25 @@ class CrawlTracker:
         self.seed_url = manager.seed_url
         self.run_id = manager.run_id
         self.urls = defaultdict(dict)
-        self.completed_pages = 0
-        self.max_pages = manager.max_pages
-        self.visited_urls = set()
+        self.max_pages = max_pages
+        self.limit_reached = False
 
-    def store_linked_urls(self, parent_url: str, links: list[str]) -> None:
-        """Update the parent URL for a URL"""
-        self.urls[parent_url]["linked_urls"] = links
+    async def init_url_data(self, url: str) -> None:
+        init_vals = {'attrs': {"seed_url": self.seed_url, "run_id": self.run_id, "crawl_status": 0, "max_pages": self.max_pages} }
+        await self.update_url(url, init_vals)
+    
+    async def close_url(self, url: str, pipe = None) -> None:
+        if pipe is None:
+            pipe = self.rdb.pipeline()
+        # Create single transaction w/ multiple operations
+        key = f"urls:{url}"
+        pipe.incr("completed_pages").get("completed_pages")
+        _, completed_pages = await pipe.execute()
+        await self.rdb.publish("db", json.dumps({"key": key, "table_name": "urls"}))
 
-    def close_url(self, url_data: str) -> None:
-        """Close a URL"""
-        self.completed_pages += 1
-        if self.completed_pages >= self.max_pages:
-            self.rdb.publish("db", "exit")
-        else:
-            self.rdb.publish("db", json.dumps(url_data))
-        return url_data
+        if int(completed_pages) >= self.max_pages:
+            self.limit_reached = True
+            await self.rdb.publish("db", "exit")
 
     async def update_url(self, url, url_data: dict, close=False) -> None:
         """
@@ -68,7 +71,7 @@ class CrawlTracker:
 
     async def get_page_to_visit(self) -> list[str]:
         """Get all frontier seeds for a URL"""
-        if self.completed_pages >= self.max_pages:
+        if self.limit_reached:
             logger.warning("Max pages reached, closing queue")
             return 'exit'
         url = await self.rdb.lpop("to_visit")
@@ -81,6 +84,7 @@ class CrawlTracker:
         is_new = await self.rdb.sadd("download_requests", url)
         if is_new:
             await self.init_url_data(url)
+            is_new = await self.rdb.lpush("to_visit", url)
         return bool(is_new)
 
     async def request_parse(self, url: str) -> None:
