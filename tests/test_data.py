@@ -7,7 +7,6 @@ import redis
 
 from simple_crawler.data import BaseTable, DatabaseManager
 
-
 @pytest.fixture
 def db_file():
     return "data/test.db"
@@ -29,10 +28,16 @@ def db_manager(db_file):
 @pytest.fixture
 def base_table(conn):
     table = BaseTable(conn)
-    return table
+    table.cursor.execute("DROP TABLE IF EXISTS test")
+    table.table_name = "test"
+    table.columns = ["id", "name"]
+    table.types = ["INTEGER", "TEXT"]
+    table.primary_key = "id"
+    table.unique_keys = ["id"]
+    table.create_table()
+    yield table
+    table.cursor.execute("DROP TABLE IF EXISTS test")
 
-
-@pytest.fixture
 def url_data():
     return {
         "url": "http://example.com/page1",
@@ -77,12 +82,6 @@ def redis_conn():
 
 
 class TestBaseTable:
-    def setup(self):
-        self.base_table.cursor.execute("DROP TABLE IF EXISTS test").commit()
-
-    def teardown(self):
-        self.base_table.cursor.execute("DROP TABLE IF EXISTS test").commit()
-
     def test_build_create_string(self, base_table):
         base_table.table_name = "test"
         base_table.columns = ["id", "name"]
@@ -112,8 +111,11 @@ class TestBaseTable:
         )
         assert base_table.cursor.fetchone() is not None
 
+    def test_execute_query_no_results(self, base_table):
+        result = base_table.execute_query("SELECT * FROM test", return_results=False)
+        assert result is True
 
-# The next branch will change this significantly, so I'm commenting out the tests for now
+
 # class MockPubSub:
 #     def __init__(self):
 #         self.messages = []

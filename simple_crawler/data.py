@@ -150,7 +150,9 @@ class BaseTable:
         self.cursor.execute(create_string)
         self.conn.commit()
 
-    def execute_query(self, query: str, params: tuple = ()):
+    def execute_query(
+        self, query: str, params: tuple = (), return_results: bool = False
+    ):
         """Execute a query"""
         logger.debug(f"Executing query: {query}")
         for i in range(3):

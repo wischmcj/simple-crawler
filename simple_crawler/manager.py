@@ -34,6 +34,7 @@ class Manager:
         db_file=SQLITE_DB_FILE,
         rdb_file=RDB_FILE,
         run_id=None,
+        redis_conn=None,
     ):
         if run_id is None:
             formatted_datetime = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -48,7 +49,7 @@ class Manager:
         self.is_async = not debug
         self.db_file = db_file
         self.rdb_file = rdb_file
-        self.rdb = redis.Redis(host=host, port=port, decode_responses=False)
+        self._init_redis(host, port, redis_conn)
         self._init_dirs()
         self._init_pubsub()
         self._init_db()
@@ -66,6 +67,12 @@ class Manager:
         data["retries"] = self.retries
         data["is_async"] = self.is_async
         return data
+
+    def _init_redis(self, host=None, port=None, redis_conn=None):
+        if redis_conn is None:
+            self.rdb = redis.Redis(host=host, port=port, decode_responses=False)
+        else:
+            self.rdb = redis_conn
 
     def _init_dirs(self):
         self.data_dir = os.path.join(os.path.dirname(__file__), DATA_DIR)

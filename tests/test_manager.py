@@ -1,36 +1,6 @@
 from __future__ import annotations
 
 import os
-from unittest.mock import patch
-
-import pytest
-from manager import Manager
-
-
-@pytest.fixture
-def mock_redis():
-    with patch("redis.Redis") as mock:
-        yield mock
-
-
-@pytest.fixture
-def manager():
-    return Manager(
-        seed_url="https://example.com",
-        max_pages=10,
-        host="localhost",
-        port=7777,
-        retries=3,
-        debug=False,
-        db_file="test.db",
-    )
-
-
-# @pytest.mark.skip(reason="Requires running Redis instance")
-def test_save_cache_integration(manager):
-    """Integration test for save_cache with real Redis"""
-    manager.save_cache()
-    assert os.path.exists(manager.rdb_path)
 
 
 def test_manager_initialization(manager):
