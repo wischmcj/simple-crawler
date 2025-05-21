@@ -117,11 +117,6 @@ class BaseTable:
         self.types = types
         self.primary_key = primary_key
         self.unique_keys = unique_keys
-        self.string_functions = {
-            "insert": self.build_insert_string,
-            "update": self.build_update_string,
-            "create": self.build_create_string,
-        }
 
     def build_create_string(self, *args):
         """Build a create string for a table"""
