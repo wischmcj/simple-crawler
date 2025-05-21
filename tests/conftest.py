@@ -3,17 +3,12 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from threading import Thread
 from unittest.mock import Mock
 
-from fakeredis import TcpFakeServer
+from fakeredis import FakeAsyncRedis, FakeRedis
 import pytest
-from redis import Redis
 
 server_address = ("localhost", 7777)
-server = TcpFakeServer(server_address, server_type="redis")
-t = Thread(target=server.serve_forever, daemon=True)
-t.start()
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +24,6 @@ from simple_crawler.manager import Manager  # noqa
 DATA_DIR = "data"
 
 
-
 def create_dir(dir_name, exist_ok=False):
     try:
         os.makedirs(dir_name, exist_ok=exist_ok)
@@ -42,7 +36,14 @@ def create_dir(dir_name, exist_ok=False):
 
 @pytest.fixture
 def redis_conn():
-    r = Redis(host=server_address[0], port=server_address[1])
+    r = FakeRedis(host=server_address[0], port=server_address[1])
+    yield r
+    r.close()
+
+
+@pytest.fixture
+def async_redis_conn():
+    r = FakeAsyncRedis(host=server_address[0], port=server_address[1])
     yield r
     r.close()
 
