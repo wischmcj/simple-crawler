@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 from bs4 import BeautifulSoup
-from site_mapper import SiteMapper
+from mapper import SiteMapper
 
 from pytest_mock import MockerFixture
 
@@ -15,7 +15,7 @@ class MockManager(SiteMapper):
 
 
 @pytest.fixture
-def site_mapper(manager):
+def mapper(manager):
     return MockManager(manager=manager, seed_url="https://example.com")
 
 
@@ -53,30 +53,28 @@ class TestSiteMapper:
         self.mock_manager.crawl_tracker = Mock()
         self.mock_manager.db_manager = Mock()
 
-    def test_init(self, site_mapper):
-        assert site_mapper.seed_url == "https://example.com"
-        assert isinstance(site_mapper.sitemap_indexes, dict)
-        assert isinstance(site_mapper.sitemap_details, list)
-        assert site_mapper.sitemap_feilds == [
+    def test_init(self, mapper):
+        assert mapper.seed_url == "https://example.com"
+        assert isinstance(mapper.sitemap_indexes, dict)
+        assert isinstance(mapper.sitemap_details, list)
+        assert mapper.sitemap_feilds == [
             "loc",
             "priority",
             "changefreq",
             "modified",
         ]
 
-    def test_parse_sitemap_index(self, site_mapper, sitemap_index):
+    def test_parse_sitemap_index(self, mapper, sitemap_index):
         soup = BeautifulSoup(sitemap_index, features="lxml")
-        urls = site_mapper.parse_sitemap_index(
-            "https://example.com/sitemap-index.xml", soup
-        )
+        urls = mapper.parse_sitemap_index("https://example.com/sitemap-index.xml", soup)
 
         assert len(urls) == 2
         assert "https://example.com/sitemap1.xml" in urls
         assert "https://example.com/sitemap2.xml" in urls
 
-    def test_process_sitemap(self, site_mapper, sitemap_content):
+    def test_process_sitemap(self, mapper, sitemap_content):
         soup = BeautifulSoup(sitemap_content, features="lxml")
-        details = site_mapper.process_sitemap("https://example.com/sitemap.xml", soup)
+        details = mapper.process_sitemap("https://example.com/sitemap.xml", soup)
 
         assert details["source_url"] == "https://example.com/sitemap.xml"
         assert details["loc"] == "https://example.com/page1"
@@ -85,28 +83,26 @@ class TestSiteMapper:
         assert details["modified"] == "2023-01-01"
         assert details["status"] == "Success"
 
-    def test_recurse_sitemap_with_index(self, site_mapper, sitemap_index):
+    def test_recurse_sitemap_with_index(self, mapper, sitemap_index):
         sm_url = "https://example.com/sitemap-index.xml"
-        site_mapper.recurse_sitemap(
-            "https://example.com/sitemap-index.xml", sitemap_index
-        )
-        sm_one = site_mapper.sitemap_indexes[sm_url]
+        mapper.recurse_sitemap("https://example.com/sitemap-index.xml", sitemap_index)
+        sm_one = mapper.sitemap_indexes[sm_url]
         assert len(sm_one) == 2
         assert "https://example.com/sitemap1.xml" in sm_one
         assert "https://example.com/sitemap2.xml" in sm_one
 
-    def test_recurse_sitemap_with_urls(self, site_mapper, sitemap_content):
-        site_mapper.recurse_sitemap(
+    def test_recurse_sitemap_with_urls(self, mapper, sitemap_content):
+        mapper.recurse_sitemap(
             "https://example.com/sitemap.xml", sitemap_content, "root"
         )
 
-        assert len(site_mapper.sitemap_details) == 1
-        assert site_mapper.sitemap_details[0]["loc"] == "https://example.com/page1"
-        assert site_mapper.sitemap_details[0]["priority"] == "0.8"
-        assert site_mapper.sitemap_details[0]["status"] == "Success"
+        assert len(mapper.sitemap_details) == 1
+        assert mapper.sitemap_details[0]["loc"] == "https://example.com/page1"
+        assert mapper.sitemap_details[0]["priority"] == "0.8"
+        assert mapper.sitemap_details[0]["status"] == "Success"
 
-    def test_get_sitemap_urls(self, site_mapper, mocker: MockerFixture):
-        mock_request = mocker.patch.object(site_mapper, "request_page")
+    def test_get_sitemap_urls(self, mapper, mocker: MockerFixture):
+        mock_request = mocker.patch.object(mapper, "request_page")
         mock_request.return_value = """<?xml version="1.0" encoding="UTF-8"?>
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
             <url>
@@ -114,7 +110,7 @@ class TestSiteMapper:
             </url>
         </urlset>"""
 
-        sitemap_url, indexes, details = site_mapper.get_sitemap_urls(
+        sitemap_url, indexes, details = mapper.get_sitemap_urls(
             "https://example.com/sitemap.xml"
         )
 
@@ -122,18 +118,18 @@ class TestSiteMapper:
         assert len(details) == 1
         assert details[0]["loc"] == "https://example.com/page1"
 
-    def test_get_sitemap(self, site_mapper, mocker: MockerFixture):
-        mock_get_urls = mocker.patch.object(site_mapper, "get_sitemap_urls")
+    def test_get_sitemap(self, mapper, mocker: MockerFixture):
+        mock_get_urls = mocker.patch.object(mapper, "get_sitemap_urls")
         mock_get_urls.return_value = (
             "https://example.com/sitemap.xml",
             {"root": []},
             [],
         )
 
-        mock_read = mocker.patch.object(site_mapper.downloader, "read_politeness_info")
+        mock_read = mocker.patch.object(mapper.downloader, "read_politeness_info")
         mock_read.return_value = (["https://example.com/sitemap.xml"], None, None)
 
-        sitemap_url, indexes, details = site_mapper.get_sitemap()
+        sitemap_url, indexes, details = mapper.get_sitemap()
 
         assert sitemap_url == "https://example.com/sitemap.xml"
         assert indexes == {"root": []}
