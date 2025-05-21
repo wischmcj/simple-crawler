@@ -6,7 +6,6 @@ docs/Engineering_Coding_Test.pdf
 *.pyc
 google_sitemap.json
 */sqlite.db
-mr_crawly/events.py
 *.rdb
 *.db
 tests/data/*

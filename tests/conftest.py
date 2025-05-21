@@ -19,16 +19,15 @@ logger = logging.getLogger(__name__)
 
 # Read in environment variables, set defaults if not present
 root_loc = os.path.dirname(os.path.dirname(__file__))
-loc = os.path.join(root_loc, "mr_crawly")
+loc = os.path.join(root_loc, "simple_crawler")
 sys.path.append(loc)
 sys.path.append(root_loc)
 
-from mr_crawly.manager import Manager  # noqa
+from simple_crawler.manager import Manager  # noqa
 
 
 DATA_DIR = "data"
 
-# from mr_crawly.config.configuration import get_logger  # noqa
 
 
 def create_dir(dir_name, exist_ok=False):
