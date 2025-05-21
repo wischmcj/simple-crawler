@@ -16,9 +16,6 @@ logger = get_logger("parser")
 class Parser:
     def __init__(self, manager: Manager, write_to_db: bool = True, url: str = None):
         self.url = url
-        self.manager = manager
-        self.cache = manager.cache
-        self.db_manager = manager.db_manager
         self.crawl_tracker = manager.crawl_tracker
         self.write_to_db = write_to_db
 
@@ -45,17 +42,19 @@ class Parser:
 
     def on_success(self, url, links):
         """Callback for when a job succeeds"""
-        update_map = {'attrs': {"crawl_status": "parsed"}, 'linked_urls': links}
+        update_map = {"attrs": {"crawl_status": "parsed"}, "linked_urls": links}
         _ = self.crawl_tracker.update_url(url, update_map, close=True)
 
     def on_failure(self, url):
         """Callback for when a job fails"""
-        update_map = {'attrs': {"crawl_status": "error"}}
+        update_map = {"attrs": {"crawl_status": "error"}}
         _ = self.crawl_tracker.update_url(url, update_map, close=True)
 
     # Crawling Logic
-    def parse(self, url, content):
+    def parse(self, url, content=None):
         """Main crawling method"""
+        if content is None:
+            content = self.crawl_tracker.get_cached_response(url)
         links = set()
         logger.debug(f"Parsing {url}")
         try:

@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from dataclasses import dataclass
 from enum import Enum
 
 import redis
-from config.configuration import get_logger  # noqa
+from config.configuration import get_logger
 
 logger = get_logger("data")
 
 
 class CrawlStatus(Enum):
     """Enum for tracking URL crawl status"""
+
     ERROR = -2
     DISALLOWED = -1
     FRONTIER = 0
@@ -20,23 +20,32 @@ class CrawlStatus(Enum):
     PARSED = 2
     CLOSED = 3
 
+
 class CrawlTracker:
     """Track the status of a URL"""
 
-    def __init__(self, manager):
-        self.manager = manager
-        self.rdb = manager.rdb
-        self.seed_url = manager.seed_url
-        self.run_id = manager.run_id
+    def __init__(
+        self, redis_conn: redis.Redis, seed_url: str, run_id: str, max_pages: int
+    ):
+        self.rdb = redis_conn
+        self.seed_url = seed_url
+        self.run_id = run_id
         self.urls = defaultdict(dict)
         self.max_pages = max_pages
         self.limit_reached = False
 
     async def init_url_data(self, url: str) -> None:
-        init_vals = {'attrs': {"seed_url": self.seed_url, "run_id": self.run_id, "crawl_status": 0, "max_pages": self.max_pages} }
+        init_vals = {
+            "attrs": {
+                "seed_url": self.seed_url,
+                "run_id": self.run_id,
+                "crawl_status": 0,
+                "max_pages": self.max_pages,
+            }
+        }
         await self.update_url(url, init_vals)
-    
-    async def close_url(self, url: str, pipe = None) -> None:
+
+    async def close_url(self, url: str, pipe=None) -> None:
         if pipe is None:
             pipe = self.rdb.pipeline()
         # Create single transaction w/ multiple operations
@@ -54,16 +63,16 @@ class CrawlTracker:
         Progresses the status of the URL through the crawl pipeline.
         If and error state is passed, the url is closed and removed from the cache.
         """
-        key = f'urls:{url}'
-        pipe=self.rdb.pipeline()
+        key = f"urls:{url}"
+        pipe = self.rdb.pipeline()
         # updated all fields to redis in a single transaction
         for field, value in url_data.items():
-            if field == 'attrs': 
-                pipe.hset(f'{key}:attrs', mapping=value)
-            elif field == 'linked_urls': 
-                pipe.lpush(f'{key}:linked_urls', *value)
-            else: 
-                pipe.set(f'{key}:{field}', value)
+            if field == "attrs":
+                pipe.hset(f"{key}:attrs", mapping=value)
+            elif field == "linked_urls":
+                pipe.lpush(f"{key}:linked_urls", *value)
+            else:
+                pipe.set(f"{key}:{field}", value)
         if not close:
             return await pipe.hincrby(url, "crawl_status").execute()
         else:
@@ -73,7 +82,7 @@ class CrawlTracker:
         """Get all frontier seeds for a URL"""
         if self.limit_reached:
             logger.warning("Max pages reached, closing queue")
-            return 'exit'
+            return "exit"
         url = await self.rdb.lpop("to_visit")
         if url is not None:
             url = url.decode("utf-8")
@@ -95,35 +104,9 @@ class CrawlTracker:
             await self.init_url_data(url)
         return bool(is_new)
 
-
-class URLCache:
-    """
-    Cache for URL content and request_status
-    """
-
-    def __init__(self, redis_conn: redis.Redis):
-        self.rdb = redis_conn
-        self.queues = []
-        self.visited_urls = set()
-        self.to_visit = set()
-
-    def update_content(self, url: str, content, status) -> None:
-        """
-        Store URL data in cache
-        Note that the url may or may not be in the cache
-        """
-        if not isinstance(content, str):
-            raise ValueError(f"Content must be a string, got {type(content)}")
-        self.rdb.hset(url, "content", content)
-        self.rdb.hset(url, "req_status", status)
-
-    def get_cached_response(self, url: str) -> URLData | None:
+    async def get_cached_response(self, url: str):
         """Retrieve URL data from cache"""
-        content, status = None, None
-        bcontent = self.rdb.hget(url, "content")
-        bstatus = self.rdb.hget(url, "req_status")
-        if bcontent:
-            content = bcontent.decode("utf-8")
-        if bstatus:
-            status = bstatus.decode("utf-8")
-        return content, status
+        key = f"urls:{url}"
+        bcontent = await self.rdb.get(f"{key}:content")
+        content = bcontent.decode("utf-8") if bcontent else None
+        return content

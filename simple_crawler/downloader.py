@@ -13,8 +13,6 @@ logger = get_logger("downloader")
 class SiteDownloader:
     def __init__(self, manager: Manager, write_to_db: bool = True):
         self.manager = manager
-        self.cache = manager.cache
-        self.db_manager = manager.db_manager
         self.crawl_tracker = manager.crawl_tracker
         self.write_to_db = write_to_db
 
@@ -46,11 +44,16 @@ class SiteDownloader:
         return sitemap_url, rrate, crawl_delay
 
     def on_success(self, url: str, content: str, status_code: int):
-        update_map = {'content': content, 'attrs': {"crawl_status": "downloaded", "status_code": status_code}}
+        update_map = {
+            "content": content,
+            "attrs": {"crawl_status": "downloaded", "status_code": status_code},
+        }
         _ = self.crawl_tracker.update_url(url, update_map)
 
     def on_failure(self, url: str, crawl_status: str, status_code: int):
-        update_map = {'attrs': {"crawl_status": crawl_status, "status_code": status_code}}
+        update_map = {
+            "attrs": {"crawl_status": crawl_status, "status_code": status_code}
+        }
         _ = self.crawl_tracker.update_url(url, update_map, close=True)
 
     def get_page_elements(self, url: str, cache_results: bool = True) -> set[str]:

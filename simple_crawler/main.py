@@ -84,9 +84,7 @@ async def download_url_while_true(
                             await asyncio.sleep(10)
                     manager.crawl_tracker.request_parse(url)
                     if content is not None:
-                        await asyncio.wait_for(
-                            parse_queue.put((url, content)), timeout=1
-                        )
+                        await asyncio.wait_for(parse_queue.put((url,)), timeout=1)
                     logger.debug("try loop exit")
                 else:
                     empty_count += 1
@@ -116,9 +114,9 @@ async def parse_while_true(
     while True and empty_count <= max_empty_count:
         if not parse_queue.empty():
             empty_count = 0
-            url, content = await asyncio.wait_for(parse_queue.get(), timeout=1)
-            logger.info(f"Content received for {url}, parsing...")
-            link_list = parser.parse(url, content)
+            url = await asyncio.wait_for(parse_queue.get(), timeout=1)
+            logger.info(f"Request received for {url}, parsing...")
+            link_list = parser.parse(url)
             for link in link_list:
                 links.append(link)
             if len(links) == 0:
