@@ -36,13 +36,13 @@ class BulkDBWriter:
         if table_name == "all":
             tables = self.to_write.items()
         else:
-            tables = [(table_name, self.tables[table_name])]
+            tables = [(table_name, self.to_write[table_name])]
         print("Flushing data...")
 
         for table_name, data in tables:
             table = self.tables[table_name]
             result = await table.db_operation(data=data, operation="insert")
-            self.to_write[table.table_name] = []
+            self.to_write[table_name] = []
             return result
 
     async def handle_message(self, channel: redis.client.PubSub):
@@ -81,7 +81,10 @@ class DatabaseManager:
     async def shutdown(self):
         """Shutdown the database manager"""
         logger.info("Shutting down database manager")
-        await self.redis_conn.publish("writer", STOPWORD)
+        try:
+            await self.redis_conn.publish("writer", STOPWORD)
+        except Exception as e:
+            logger.info(f"Unable to publish stop message to DB writer: {e}")
         await asyncio.gather(*self.futures)
 
     async def add_listener(self, listener_cls, args=()):
@@ -205,4 +208,3 @@ class BaseTable:
                 logger.error(f"Integrity error: {e}")
                 await asyncio.sleep(1)
         return False
-
