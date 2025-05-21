@@ -9,6 +9,7 @@ from fakeredis.aioredis import FakeRedis
 import pytest
 from redis import asyncio as redis_async
 
+from simple_crawler.cache import CrawlTracker
 from simple_crawler.data import BaseTable, BulkDBWriter, DatabaseManager
 
 
@@ -122,11 +123,11 @@ class MockPubSub:
 
 
 class MockBulkDBWriter(BulkDBWriter):
-    def __init__(self):
+    def __init__(self, redis_conn: AsyncMock):
         table = AsyncMock(spec=BaseTable)
         table.table_name = "test_table"
         self.tables = {"test_table": table}
-        super().__init__(self.tables)
+        super().__init__(self.tables, redis_conn)
 
 
 class TestBaseTable:
@@ -192,11 +193,15 @@ class TestBulkDBWriter:
                 "test.db", "test_table", ["id", "data"], ["INTEGER", "TEXT"]
             )
         }
-        return BulkDBWriter(tables, batch_size=2)
+        return BulkDBWriter(tables, mock_redis, batch_size=2)
 
     @pytest.fixture
-    def no_flush_bulk_writer(self, mock_redis: AsyncMock):
-        bulk_writer = MockBulkDBWriter()
+    def crawl_tracker(async_redis_conn):
+        return CrawlTracker(async_redis_conn, "http://example.com", "test_run", 100)
+
+    @pytest.fixture
+    def no_flush_bulk_writer(self, async_redis_conn: FakeRedis):
+        bulk_writer = MockBulkDBWriter(async_redis_conn)
         bulk_writer.flush_data = AsyncMock()
         return bulk_writer
 
@@ -248,6 +253,22 @@ class TestBulkDBWriter:
         pubsub = MockPubSub(return_value, stop_on=2)
         await no_flush_bulk_writer.handle_message(pubsub)
         assert len(no_flush_bulk_writer.to_write["test_table"]) == 1
+
+    # @pytest.mark.asyncio
+    # async def test_handle_message_data(self, fakeredisBulkDBWriter: MockBulkDBWriter, crawl_tracker: CrawlTracker):
+    #     url = "http://example.com"
+    #     url_data = {"data": {"seed_url": "http://example.com", "run_id": "test_run", "crawl_status": 0, "max_pages": 100}}
+    #     return_value = {
+    #         "type": "message",
+    #         "pattern": None,
+    #         "channel": b"writer",
+    #         "data": b'{"key": "urls:http://example.com", "table_name": "urls"}',
+    #     }
+    #     crawl_tracker.update_url(url, url_data)
+    #     pubsub = MockPubSub(return_value, stop_on=2)
+    #     await fakeredisBulkDBWriter.handle_message(pubsub)
+    #     breakpoint()
+    #     assert len(fakeredisBulkDBWriter.to_write["test_table"]) == 1
 
 
 class TestDatabaseManager:
