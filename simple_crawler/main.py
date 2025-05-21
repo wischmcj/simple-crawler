@@ -30,7 +30,7 @@ async def prime_queue(seed_url: str):
         sitemap_url, sitemap_indexes, sitemap_details = mapper.get_sitemap()
     except Exception as e:
         logger.error(f"Error getting sitemap for {seed_url}: {e}")
-        manager.crawl_tracker.add_page_to_visit(seed_url)
+        manager.crawl_tracker.request_download(seed_url)
 
 
 async def process_url_while_true(
@@ -82,7 +82,7 @@ async def download_url_while_true(
                             )
                             check_every = check_every * 1.5
                             await asyncio.sleep(10)
-                    manager.crawl_tracker.add_page_visited(url)
+                    manager.crawl_tracker.request_parse(url)
                     if content is not None:
                         await asyncio.wait_for(
                             parse_queue.put((url, content)), timeout=1

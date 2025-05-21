@@ -110,7 +110,7 @@ class CrawlTracker:
         """Close the queue"""
         self.sent_exit = True
 
-    def get_page_to_visit(self) -> list[str]:
+    async def get_page_to_visit(self) -> list[str]:
         """Get all frontier seeds for a URL"""
         if self.completed_pages >= self.max_pages:
             logger.warning("Max pages reached, closing queue")
@@ -120,14 +120,20 @@ class CrawlTracker:
             url = url.decode("utf-8")
         return url or ""
 
-    def add_page_to_visit(self, url: str) -> None:
-        """Add a frontier URL to the visit queue"""
-        if url not in self.visited_urls:
-            self.rdb.lpush("to_visit", url)
+    async def request_download(self, url: str) -> None:
+        """Used to request that a page be downloaded"""
+        is_new = await self.rdb.sadd("download_requests", url)
+        if is_new:
+            await self.init_url_data(url)
+        return bool(is_new)
 
-    def add_page_visited(self, url: str) -> None:
-        """Add a visited seed for a URL"""
-        self.visited_urls.add(url)
+    async def request_parse(self, url: str) -> None:
+        """Used to request that a page be parsed, and
+        to ensure it has not already been parsed"""
+        is_new = await self.rdb.sadd("parse_requests", url)
+        if is_new:
+            await self.init_url_data(url)
+        return bool(is_new)
 
 
 class URLCache:
