@@ -55,10 +55,6 @@ class Manager:
         self._init_db()
         self._init_cache()
 
-        self.visited_urls = set()
-        self.to_visit = set()
-        self.listeners = []
-
     def get_run_data(self):
         data = {}
         data["run_id"] = self.run_id

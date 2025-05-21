@@ -9,9 +9,6 @@ def test_manager_initialization(manager):
     assert manager.max_pages == 10
     assert manager.retries == 3
     assert manager.is_async is True
-    assert isinstance(manager.visited_urls, set)
-    assert isinstance(manager.to_visit, set)
-    assert isinstance(manager.listeners, list)
 
 
 def test_get_run_data(manager):
