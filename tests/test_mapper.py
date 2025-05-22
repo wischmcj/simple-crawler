@@ -13,14 +13,9 @@ class MockMapper(SiteMapper):
     def on_map_success(self, arg):
         pass
 
-
-@pytest.fixture
-def manager(manager):
-    return MockManager(manager=manager, seed_url="https://example.com")
-
 @pytest.fixture
 def mapper(manager):
-    return Mock(SiteMapper)
+    return SiteMapper(manager, manager.seed_url)
 
 
 @pytest.fixture
