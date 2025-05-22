@@ -93,7 +93,7 @@ class Manager:
 
     def _init_cache(self):
         self.cache = URLCache(self.rdb)
-        self.crawl_tracker = CrawlTracker(manager=self, url_pubsub=self.url_pubsub)
+        self.crawl_tracker = CrawlTracker(manager=self)
 
     def shutdown(self):
         """Shutdown the manager"""

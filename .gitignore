@@ -8,6 +8,7 @@ google_sitemap.json
 */sqlite.db
 *.rdb
 *.db
+simple_crawler/data/*
 tests/data/*
 resources/scripts/graveyard/*
 data/test.db

@@ -14,7 +14,7 @@ from downloader import SiteDownloader
 from manager import Manager
 from mapper import SiteMapper
 
-logger = get_logger("crawler")
+logger = get_logger("main")
 
 rdb = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
 
@@ -68,8 +68,8 @@ async def download_url_while_true(
             if url == 0:
                 logger.info("No more pages to visit, closing queue")
                 running = False
-            for _ in range(retries):
-                if url is not None:
+            if url:  # may be '' or None
+                for _ in range(retries):
                     logger.debug(f"Download request received for {url} ...")
                     content = None
                     try:
@@ -91,6 +91,11 @@ async def download_url_while_true(
                 else:
                     empty_count += 1
             await asyncio.sleep(check_every)
+            if empty_count > max_empty_count:
+                logger.info(
+                    f"Download queue empty for {max_empty_count} consecutive checks"
+                )
+                break
         except asyncio.TimeoutError:
             logger.info("Timeout error")
             break
@@ -113,7 +118,7 @@ async def parse_while_true(
     # Continue parsing until 25 cycle have passed without finding any new items
     # More likely, the max page limit will be reached first, causing the downloader
     # to exit
-    while True and empty_count <= max_empty_count:
+    while not parse_queue.empty() and not (rdb.scard("download_requests") == 0):
         if not parse_queue.empty():
             empty_count = 0
             url, content = await asyncio.wait_for(parse_queue.get(), timeout=1)
@@ -127,9 +132,9 @@ async def parse_while_true(
         else:
             empty_count += 1
         await asyncio.sleep(check_every)
-
-    if empty_count >= max_empty_count:
-        logger.info(f"Queue empty for {max_empty_count} consecutive checks")
+        if empty_count >= max_empty_count:
+            logger.info(f"Parse queue empty for {max_empty_count} consecutive checks")
+            break
     logger.info("Completed parsing")
     return links
 
@@ -139,9 +144,11 @@ def crawl(
     max_pages: int = 100,
     retries: int = 3,
     write_to_db: bool = True,
-    check_every: float = 0.5,
+    check_every: float = 1,
 ):
-    rdb.flushall()
+    rdb.delete("to_visit")
+    rdb.delete("download_requests")
+    rdb.delete("parse_requests")
     atexit.register(manager.shutdown)
     manager.set_seed_url(seed_url)
     manager.set_max_pages(max_pages)

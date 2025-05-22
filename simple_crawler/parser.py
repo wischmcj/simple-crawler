@@ -45,7 +45,6 @@ class Parser:
 
     def on_success(self, url, links):
         """Callback for when a job succeeds"""
-        self.crawl_tracker.store_linked_urls(url, links)
         update_dict = {"crawl_status": "completed", "linked_urls": links}
         _ = self.crawl_tracker.update_url(url, update_dict)
 

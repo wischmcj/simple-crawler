@@ -32,15 +32,12 @@ class CrawlTracker:
         self.urls[url] = init_vals
         self.update_url(url, {"crawl_status": "started"}, close=False)
 
-    def store_linked_urls(self, parent_url: str, links: list[str]) -> None:
-        """Update the parent URL for a URL"""
-        self.urls[parent_url]["linked_urls"] = links
-
     def close_url(self, url_data: str) -> None:
         """Close a URL"""
-        self.completed_pages += 1
-        if self.completed_pages >= self.max_pages:
-            self.limit_reached = True
+        if int(url_data.get("req_status")) != 404:
+            self.completed_pages += 1
+            if self.completed_pages >= self.max_pages:
+                self.limit_reached = True
             self.rdb.publish("db", "exit")
         else:
             self.rdb.publish("db", json.dumps(url_data))

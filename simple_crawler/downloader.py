@@ -25,10 +25,16 @@ class SiteDownloader:
     # Politeness
     def can_fetch(self, url: str) -> bool:
         """Check if we're allowed to crawl this URL according to robots.txt"""
-        parsed_url = urlparse(url)
-        robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
-        robots_response = requests.get(robots_url)
-        self.rp = Protego.parse(robots_response.text)
+        try:
+            parsed_url = urlparse(url)
+            robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
+            robots_response = requests.get(robots_url)
+            if robots_response is None:
+                return False
+            self.rp = Protego.parse(robots_response.text)
+        except Exception as e:
+            logger.warning(f"Error checking robots.txt for {url}: {e}")
+            return True
         return self.rp.can_fetch("*", url)
 
     def read_politeness_info(self, url: str):
