@@ -1,23 +1,19 @@
 from __future__ import annotations
 
 import pytest
+import json
+from unittest.mock import AsyncMock
 
 from simple_crawler.cache import CrawlTracker, URLCache
 
-
 @pytest.fixture
-def url_cache(redis_conn):
-    return URLCache(redis_conn)
-
-
-@pytest.fixture
-def crawl_tracker(redis_conn):
-    return CrawlTracker(redis_conn)
+def crawl_tracker(async_redis_conn):
+    return CrawlTracker(async_redis_conn, "http://example.com", "test_run", 100)
 
 
 @pytest.fixture
 def sample_url():
-    return "https://example.com"
+    return "http://example.com/public/"
 
 
 @pytest.fixture
@@ -45,7 +41,6 @@ def sample_failed_url_data(sample_url):
         "crawl_status": "error",
         "run_id": "test_run",
     }
-
 
 class TestURLCache:
     def test_initialization(self, url_cache):

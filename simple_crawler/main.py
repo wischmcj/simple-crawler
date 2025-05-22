@@ -116,9 +116,9 @@ async def parse_while_true(
     while True and empty_count <= max_empty_count:
         if not parse_queue.empty():
             empty_count = 0
-            url, content = await asyncio.wait_for(parse_queue.get(), timeout=1)
-            logger.info(f"Content received for {url}, parsing...")
-            link_list = parser.parse(url, content)
+            url = await asyncio.wait_for(parse_queue.get(), timeout=1)
+            logger.info(f"Request received for {url}, parsing...")
+            link_list = parser.parse(url)
             for link in link_list:
                 links.append(link)
             if len(links) == 0:
@@ -140,8 +140,10 @@ def crawl(
     retries: int = 3,
     write_to_db: bool = True,
     check_every: float = 0.5,
+    flush_cache: bool = True,
 ):
-    # main()
+    if flush_cache:
+        manager.rdb.flushall()
     atexit.register(manager.shutdown)
     manager.set_seed_url(seed_url)
     manager.set_max_pages(max_pages)

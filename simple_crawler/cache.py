@@ -4,7 +4,7 @@ import json
 from collections import defaultdict
 
 import redis
-from config.configuration import get_logger  # noqa
+from config.configuration import get_logger
 
 logger = get_logger("data")
 
@@ -41,40 +41,22 @@ class CrawlTracker:
         Progresses the status of the URL through the crawl pipeline.
         If and error state is passed, the url is closed and removed from the cache.
         """
-        if status in ("error", "disallowed", "parse"):
-            url_data = self.urls.pop(url, {})
+        key = f"urls:{url}"
+        pipe = self.rdb.pipeline()
+        # updated all fields to redis in a single transaction
+        for field, value in url_data.items():
+            if field == "attrs":
+                pipe.hset(f"{key}:attrs", mapping=value)
+            elif field == "linked_urls":
+                pipe.lpush(f"{key}:linked_urls", *value)
+            else:
+                pipe.set(f"{key}:{field}", value)
+        if not close:
+            return await pipe.hincrby(url, "crawl_status").execute()
         else:
-            url_data = self.urls.get(url, {})
+            await self.close_url(url, pipe)
 
-        if url_data.get("seed_url") != self.seed_url:
-            url_data["seed_url"] = self.seed_url
-        if url_data.get("run_id") != self.run_id:
-            url_data["run_id"] = self.run_id
-        if url_data.get("crawl_status") != "started":
-            url_data["crawl_status"] = "started"
-        if url_data.get("url") != url:
-            url_data["url"] = url
-
-        if status_code:
-            url_data["req_status"] = status_code
-
-        if status == "downloaded":
-            url_data["crawl_status"] = "parse"
-        elif status == "parsed":
-            url_data["crawl_status"] = "Finished"
-            self.close_url(url_data)
-        elif status == "error" or status == "disallowed":
-            url_data["crawl_status"] = status
-            self.close_url(url_data)
-        url_data["crawl_status"] = status
-        self.urls[url] = url_data
-        return url_data
-
-    def close_queue(self) -> None:
-        """Close the queue"""
-        self.sent_exit = True
-
-    def get_page_to_visit(self) -> list[str]:
+    async def get_page_to_visit(self) -> list[str]:
         """Get all frontier seeds for a URL"""
         if self.limit_reached:
             logger.warning("Max pages reached, closing queue")
@@ -120,11 +102,7 @@ class URLCache:
 
     def get_cached_response(self, url: str) -> URLData | None:
         """Retrieve URL data from cache"""
-        content, status = None, None
-        bcontent = self.rdb.hget(url, "content")
-        bstatus = self.rdb.hget(url, "req_status")
-        if bcontent:
-            content = bcontent.decode("utf-8")
-        if bstatus:
-            status = bstatus.decode("utf-8")
-        return content, status
+        key = f"urls:{url}"
+        bcontent = await self.rdb.get(f"{key}:content")
+        content = bcontent.decode("utf-8") if bcontent else None
+        return content
