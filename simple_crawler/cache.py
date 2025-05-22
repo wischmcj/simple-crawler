@@ -120,14 +120,18 @@ class CrawlTracker:
             url = url.decode("utf-8")
         return url or ""
 
-    def add_page_to_visit(self, url: str) -> None:
-        """Add a frontier URL to the visit queue"""
-        if url not in self.visited_urls:
-            self.rdb.lpush("to_visit", url)
+    def request_download(self, url: str) -> None:
+        """Used to request that a page be downloaded"""
+        is_new = self.rdb.sadd("download_requests", url)
+        if is_new:
+            is_new = self.rdb.lpush("to_visit", url)
+        return bool(is_new)
 
-    def add_page_visited(self, url: str) -> None:
-        """Add a visited seed for a URL"""
-        self.visited_urls.add(url)
+    def request_parse(self, url: str) -> None:
+        """Used to request that a page be parsed, and
+        to ensure it has not already been parsed"""
+        is_new = self.rdb.sadd("parse_requests", url)
+        return bool(is_new)
 
 
 class URLCache:

@@ -40,7 +40,7 @@ class Parser:
             # Only include URLs from the same domain
             if urlparse(absolute_url).netloc == urlparse(url).netloc:
                 links.add(absolute_url)
-                self.crawl_tracker.add_page_to_visit(absolute_url)
+                self.crawl_tracker.request_download(absolute_url)
         return links
 
     def on_success(self, url, links):

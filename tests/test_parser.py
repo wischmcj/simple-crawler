@@ -33,7 +33,7 @@ class TestParser(unittest.TestCase):
         expected_links = {urljoin(test_url, "/page1"), "https://example.com/page2"}
 
         self.assertEqual(links, expected_links)
-        self.mock_manager.crawl_tracker.add_page_to_visit.assert_called()
+        self.mock_manager.crawl_tracker.request_download.assert_called()
 
     def test_on_success(self):
         """Test successful parsing callback"""

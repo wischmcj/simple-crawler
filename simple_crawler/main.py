@@ -30,7 +30,7 @@ async def prime_queue(seed_url: str):
         sitemap_url, sitemap_indexes, sitemap_details = mapper.get_sitemap()
     except Exception as e:
         logger.error(f"Error getting sitemap for {seed_url}: {e}")
-        manager.crawl_tracker.add_page_to_visit(seed_url)
+        manager.crawl_tracker.request_download(seed_url)
 
 
 async def process_url_while_true(
@@ -82,8 +82,8 @@ async def download_url_while_true(
                             )
                             check_every = check_every * 1.5
                             await asyncio.sleep(10)
-                    manager.crawl_tracker.add_page_visited(url)
-                    if content is not None:
+                    not_present_in_queue = manager.crawl_tracker.request_parse(url)
+                    if content is not None and not_present_in_queue:
                         await asyncio.wait_for(
                             parse_queue.put((url, content)), timeout=1
                         )
@@ -144,9 +144,11 @@ def crawl(
     max_pages: int = 100,
     retries: int = 3,
     write_to_db: bool = True,
-    check_every: float = 0.5,
+    check_every: float = 1,
 ):
-    # main()
+    rdb.delete("to_visit")
+    rdb.delete("download_requests")
+    rdb.delete("parse_requests")
     atexit.register(manager.shutdown)
     manager.set_seed_url(seed_url)
     manager.set_max_pages(max_pages)
