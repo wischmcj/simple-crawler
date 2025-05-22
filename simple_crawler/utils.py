@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 from config.configuration import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("main")
 
 
 def parse_url(url: str):

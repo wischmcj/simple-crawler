@@ -2,48 +2,11 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from dataclasses import dataclass
-from enum import Enum
 
 import redis
 from config.configuration import get_logger  # noqa
 
 logger = get_logger("data")
-
-
-class CrawlStatus(Enum):
-    """Enum for tracking URL crawl status"""
-
-    SITE_MAP = "map_site"
-    FRONTIER = "frontier"
-    PARSE = "parse"
-    DB = "db"
-    ERROR = "error"
-    CLOSED = "closed"
-    DISALLOWED = "disallowed"
-
-
-class UrlAttributes(Enum):
-    """Enum for tracking URL attributes"""
-
-    HTML = "html"
-    SITEMAP_FREQUENCY = "sitemap_frequency"
-    SITEMAP_PRIORITY = "sitemap_priority"
-    LAST_MODIFIED = "last_modified"
-    STATUS = "status"
-
-
-@dataclass
-class URLData:
-    """`Data` structure for URL metadata"""
-
-    # URL first enters the cache when it is 'visited'
-    # e.g. a download attempt is made
-    url: str
-    content: str = ""
-    req_status: CrawlStatus = CrawlStatus.FRONTIER
-    crawl_status: CrawlStatus = CrawlStatus.FRONTIER
-    run_id: str = ""
 
 
 class CrawlTracker:
@@ -54,10 +17,10 @@ class CrawlTracker:
         self.rdb = manager.rdb
         self.seed_url = manager.seed_url
         self.run_id = manager.run_id
-        self.urls = defaultdict(dict)
         self.completed_pages = 0
         self.max_pages = manager.max_pages
-        self.visited_urls = set()
+        self.urls = defaultdict(dict)
+        self.limit_reached = False
 
     def store_linked_urls(self, parent_url: str, links: list[str]) -> None:
         """Update the parent URL for a URL"""
@@ -67,6 +30,7 @@ class CrawlTracker:
         """Close a URL"""
         self.completed_pages += 1
         if self.completed_pages >= self.max_pages:
+            self.limit_reached = True
             self.rdb.publish("db", "exit")
         else:
             self.rdb.publish("db", json.dumps(url_data))
@@ -112,22 +76,27 @@ class CrawlTracker:
 
     def get_page_to_visit(self) -> list[str]:
         """Get all frontier seeds for a URL"""
-        if self.completed_pages >= self.max_pages:
+        if self.limit_reached:
             logger.warning("Max pages reached, closing queue")
-            return None
+            return "exit"
         url = self.rdb.lpop("to_visit")
         if url is not None:
             url = url.decode("utf-8")
         return url or ""
 
-    def add_page_to_visit(self, url: str) -> None:
-        """Add a frontier URL to the visit queue"""
-        if url not in self.visited_urls:
-            self.rdb.lpush("to_visit", url)
+    def request_download(self, url: str) -> None:
+        """Used to request that a page be downloaded"""
+        is_new = self.rdb.sadd("download_requests", url)
+        if is_new:
+            self.init_url_data(url)
+            is_new = self.rdb.lpush("to_visit", url)
+        return bool(is_new)
 
-    def add_page_visited(self, url: str) -> None:
-        """Add a visited seed for a URL"""
-        self.visited_urls.add(url)
+    def request_parse(self, url: str) -> None:
+        """Used to request that a page be parsed, and
+        to ensure it has not already been parsed"""
+        is_new = self.rdb.sadd("parse_requests", url)
+        return bool(is_new)
 
 
 class URLCache:
@@ -138,8 +107,6 @@ class URLCache:
     def __init__(self, redis_conn: redis.Redis):
         self.rdb = redis_conn
         self.queues = []
-        self.visited_urls = set()
-        self.to_visit = set()
 
     def update_content(self, url: str, content, status) -> None:
         """
@@ -151,7 +118,7 @@ class URLCache:
         self.rdb.hset(url, "content", content)
         self.rdb.hset(url, "req_status", status)
 
-    def get_cached_response(self, url: str) -> URLData | None:
+    def get_cached_response(self, url: str):
         """Retrieve URL data from cache"""
         content, status = None, None
         bcontent = self.rdb.hget(url, "content")
