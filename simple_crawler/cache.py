@@ -22,6 +22,16 @@ class CrawlTracker:
         self.urls = defaultdict(dict)
         self.limit_reached = False
 
+    def init_url_data(self, url: str) -> None:
+        init_vals = {
+            "seed_url": self.seed_url,
+            "run_id": self.run_id,
+            "crawl_status": 0,
+            "max_pages": self.max_pages,
+        }
+        self.urls[url] = init_vals
+        self.update_status(url, {"crawl_status": "started"}, close=False)
+
     def store_linked_urls(self, parent_url: str, links: list[str]) -> None:
         """Update the parent URL for a URL"""
         self.urls[parent_url]["linked_urls"] = links
@@ -36,39 +46,15 @@ class CrawlTracker:
             self.rdb.publish("db", json.dumps(url_data))
         return url_data
 
-    def update_status(self, url: str, status: str, status_code: int = None) -> None:
+    def update_status(self, url: str, update_dict: dict, close: bool = False) -> None:
         """
         Progresses the status of the URL through the crawl pipeline.
         If and error state is passed, the url is closed and removed from the cache.
         """
-        if status in ("error", "disallowed", "parse"):
+        self.urls[url].update(update_dict)
+        if close:
             url_data = self.urls.pop(url, {})
-        else:
-            url_data = self.urls.get(url, {})
-
-        if url_data.get("seed_url") != self.seed_url:
-            url_data["seed_url"] = self.seed_url
-        if url_data.get("run_id") != self.run_id:
-            url_data["run_id"] = self.run_id
-        if url_data.get("crawl_status") != "started":
-            url_data["crawl_status"] = "started"
-        if url_data.get("url") != url:
-            url_data["url"] = url
-
-        if status_code:
-            url_data["req_status"] = status_code
-
-        if status == "downloaded":
-            url_data["crawl_status"] = "parse"
-        elif status == "parsed":
-            url_data["crawl_status"] = "Finished"
             self.close_url(url_data)
-        elif status == "error" or status == "disallowed":
-            url_data["crawl_status"] = status
-            self.close_url(url_data)
-        url_data["crawl_status"] = status
-        self.urls[url] = url_data
-        return url_data
 
     def close_queue(self) -> None:
         """Close the queue"""

@@ -14,7 +14,7 @@ from downloader import SiteDownloader
 from manager import Manager
 from mapper import SiteMapper
 
-logger = get_logger("main")
+logger = get_logger("crawler")
 
 rdb = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
 
@@ -27,6 +27,7 @@ async def prime_queue(seed_url: str):
     # Check to see if we can get a sitemap
     mapper = SiteMapper(manager=manager, seed_url=seed_url)
     try:
+        raise Exception("test")
         sitemap_url, sitemap_indexes, sitemap_details = mapper.get_sitemap()
     except Exception as e:
         logger.error(f"Error getting sitemap for {seed_url}: {e}")
@@ -65,7 +66,7 @@ async def download_url_while_true(
         try:
             # Check redis list for new pages needing to be visited
             url = manager.crawl_tracker.get_page_to_visit()
-            if url == "exit":
+            if url == 0:
                 logger.info("No more pages to visit, closing queue")
                 running = False
             for _ in range(retries):
@@ -82,8 +83,8 @@ async def download_url_while_true(
                             )
                             check_every = check_every * 1.5
                             await asyncio.sleep(10)
-                    needs_parsing = manager.crawl_tracker.request_parse(url)
-                    if content is not None and needs_parsing:
+                    not_present_in_queue = manager.crawl_tracker.request_parse(url)
+                    if content is not None and not_present_in_queue:
                         await asyncio.wait_for(
                             parse_queue.put((url, content)), timeout=1
                         )
@@ -141,7 +142,7 @@ def crawl(
     write_to_db: bool = True,
     check_every: float = 0.5,
 ):
-    # main()
+    rdb.flushall()
     atexit.register(manager.shutdown)
     manager.set_seed_url(seed_url)
     manager.set_max_pages(max_pages)

@@ -96,7 +96,7 @@ class SiteMapper:
                 self.sitemap_indexes[index].append(url)
                 self.sitemap_details.append(dict(details))
                 if details.get("status") == "Success":
-                    self.manager.crawl_tracker.add_page_to_visit(details.get("loc"))
+                    self.manager.crawl_tracker.request_parse(details.get("loc"))
                 links = [details.get("loc")]
 
         except Exception as e:

@@ -27,13 +27,9 @@ class SiteDownloader:
         """Check if we're allowed to crawl this URL according to robots.txt"""
         parsed_url = urlparse(url)
         robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
-        try:
-            robots_response = requests.get(robots_url)
-            self.rp = Protego.parse(robots_response.text)
-            return self.rp.can_fetch("*", url)
-        except Exception as e:
-            logger.warning(f"Error checking robots.txt for {url}: {e}")
-            return True  # If we can't check robots.txt, we probably want to set a reasonable default
+        robots_response = requests.get(robots_url)
+        self.rp = Protego.parse(robots_response.text)
+        return self.rp.can_fetch("*", url)
 
     def read_politeness_info(self, url: str):
         parsed_url = urlparse(url)
@@ -47,23 +43,32 @@ class SiteDownloader:
 
     def on_success(self, url: str, content: str, status_code: int):
         self.cache.update_content(url, content, status_code)
-        _ = self.crawl_tracker.update_status(url, "downloaded", status_code)
+        update_dict = {"crawl_status": "downloaded", "req_status": status_code}
+        _ = self.crawl_tracker.update_status(url, update_dict)
 
     def on_failure(self, url: str, crawl_status: str, content: str, status_code: int):
         self.cache.update_content(url, content, status_code)
-        _ = self.crawl_tracker.update_status(url, crawl_status, status_code)
+        update_dict = {"crawl_status": crawl_status, "req_status": status_code}
+        _ = self.crawl_tracker.update_status(url, update_dict, close=True)
 
     def get_page_elements(self, url: str, cache_results: bool = True) -> set[str]:
         """Get the page elements from a webpage"""
-
+        logger.debug(f"Downloading {url}")
+        can_fetch = True
         # Check if we're allowed to crawl the page
-        if not self.can_fetch(url):
+        try:
+            can_fetch = self.can_fetch(url)
+        except Exception as e:
+            logger.warning(f"Error checking robots.txt for {url}: {e}")
+
+        if not can_fetch:
             msg = f"Skipping {url} (not allowed by robots.txt)"
             logger.info(msg)
             self.on_failure(url, "disallowed", "", 403)
             return None, 403
 
-        # Get the page elementsupdate_statusupdate_status
+        response = None
+        # Get the page elements
         try:
             response = requests.get(url, timeout=1)
             response.raise_for_status()
