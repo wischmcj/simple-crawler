@@ -160,7 +160,7 @@ class BaseTable:
     ):
         """Execute a query"""
         logger.debug(f"Executing query: {query}")
-        if return_results or "SELECT" in query:
+        if return_results:
             self.cursor.execute(query, params)
             res = self.cursor.fetchall()
             return [dict(zip(self.columns, url)) for url in res]
@@ -264,10 +264,10 @@ class UrlTable(BaseTable):
                FROM urls
                WHERE run_id = ?""",
             (run_id,),
+            return_results=True,
         )
         if res:
-            urls = self.cursor.fetchall()
-            return [dict(zip(self.columns, url)) for url in urls]
+            return res
         else:
             raise Exception("Failed to get URLs for run")
 
@@ -278,10 +278,10 @@ class UrlTable(BaseTable):
                FROM urls
                WHERE seed_url = ?""",
             (seed_url,),
+            return_results=True,
         )
         if res:
-            urls = self.cursor.fetchall()
-            return [dict(zip(self.columns, url)) for url in urls]
+            return res
         else:
             raise Exception("Failed to get URLs for seed URL")
 
@@ -362,28 +362,10 @@ class SitemapTable(BaseTable):
                FROM sitemaps
                WHERE seed_url = ?""",
             (seed_url,),
+            return_results=True,
         )
         if res:
-            sitemaps = self.cursor.fetchall()
-            return list(
-                dict(
-                    zip(
-                        [
-                            "run_id",
-                            "seed_url",
-                            "url",
-                            "index_url",
-                            "loc",
-                            "priority",
-                            "frequency",
-                            "modified",
-                            "status",
-                        ],
-                        sitemap,
-                    )
-                )
-                for sitemap in sitemaps
-            )
+            return res
         else:
             raise Exception("Failed to get sitemaps for seed URL")
 

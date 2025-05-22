@@ -34,7 +34,7 @@ def _load_console_log():
     logging.config.dictConfig(config)
 
 
-def get_logger(logger_name: str, log_file: str = None, log_level: int = logging.DEBUG):
+def get_logger(logger_name: str, log_file: str = None, log_level: int = None):
     """
     Returns a logger with at least the default console handler.
     If log_file is provided, it will either:
@@ -42,13 +42,9 @@ def get_logger(logger_name: str, log_file: str = None, log_level: int = logging.
      - repoint the file handler to a new file
     Likewise, if the log level is provided, it will update the log level of both handlers.
     """
-    logger = logging.getLogger(logger_name)
-    return_logger = logger
-    has_file_handler = any(
-        isinstance(handler, logging.FileHandler) for handler in logger.handlers
-    )
     _load_console_log()
     return_logger = logging.getLogger(logger_name)
-    for handler in return_logger.handlers:
-        handler.setLevel(log_level)
+    if log_level:   
+        for handler in return_logger.handlers:
+            handler.setLevel(log_level)
     return return_logger
