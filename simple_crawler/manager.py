@@ -37,7 +37,7 @@ class Manager:
     ):
         if run_id is None:
             formatted_datetime = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            logger.info("Formatted datetime:", formatted_datetime)
+            logger.info(f"Formatted datetime: {formatted_datetime}")
             self.run_id = formatted_datetime
         else:
             self.run_id = run_id
@@ -53,10 +53,6 @@ class Manager:
         self._init_pubsub()
         self._init_db()
         self._init_cache()
-
-        self.visited_urls = set()
-        self.to_visit = set()
-        self.listeners = []
 
     def get_run_data(self):
         data = {}

@@ -307,7 +307,7 @@ class UrlTable(BaseTable):
             ]
             vals = ",".join(f"('{val_list}')" for val_list in val_lists)
             query = insert_query + vals
-            logger.info("running query", query)
+            logger.info(f"running query: {query}")
             _ = self.execute_query(
                 query,
             )

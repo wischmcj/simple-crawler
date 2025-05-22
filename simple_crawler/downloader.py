@@ -29,11 +29,13 @@ class SiteDownloader:
         robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
         try:
             robots_response = requests.get(robots_url)
+            if robots_response is None:
+                return False
             self.rp = Protego.parse(robots_response.text)
-            return self.rp.can_fetch("*", url)
         except Exception as e:
             logger.warning(f"Error checking robots.txt for {url}: {e}")
-            return True  # If we can't check robots.txt, we probably want to set a reasonable default
+            return True
+        return self.rp.can_fetch("*", url)
 
     def read_politeness_info(self, url: str):
         parsed_url = urlparse(url)
@@ -55,15 +57,18 @@ class SiteDownloader:
 
     def get_page_elements(self, url: str, cache_results: bool = True) -> set[str]:
         """Get the page elements from a webpage"""
-
+        logger.debug(f"Downloading {url}")
+        can_fetch = True
         # Check if we're allowed to crawl the page
-        if not self.can_fetch(url):
+        can_fetch = self.can_fetch(url)
+        if not can_fetch:
             msg = f"Skipping {url} (not allowed by robots.txt)"
             logger.info(msg)
             self.on_failure(url, "disallowed", "", 403)
             return None, 403
 
-        # Get the page elementsupdate_statusupdate_status
+        response = None
+        # Get the page elements
         try:
             response = requests.get(url, timeout=1)
             response.raise_for_status()
