@@ -27,7 +27,6 @@ async def prime_queue(seed_url: str):
     # Check to see if we can get a sitemap
     mapper = SiteMapper(manager=manager, seed_url=seed_url)
     try:
-        raise Exception("test")
         sitemap_url, sitemap_indexes, sitemap_details = mapper.get_sitemap()
     except Exception as e:
         logger.error(f"Error getting sitemap for {seed_url}: {e}")
