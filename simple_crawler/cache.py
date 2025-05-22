@@ -49,7 +49,7 @@ class URLData:
 class CrawlTracker:
     """Track the status of a URL"""
 
-    def __init__(self, manager, url_pubsub):
+    def __init__(self, manager):
         self.manager = manager
         self.rdb = manager.rdb
         self.seed_url = manager.seed_url
@@ -142,8 +142,6 @@ class URLCache:
     def __init__(self, redis_conn: redis.Redis):
         self.rdb = redis_conn
         self.queues = []
-        self.visited_urls = set()
-        self.to_visit = set()
 
     def update_content(self, url: str, content, status) -> None:
         """
