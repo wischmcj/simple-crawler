@@ -25,9 +25,9 @@ class SiteDownloader:
     # Politeness
     def can_fetch(self, url: str) -> bool:
         """Check if we're allowed to crawl this URL according to robots.txt"""
-        parsed_url = urlparse(url)
-        robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
         try:
+            parsed_url = urlparse(url)
+            robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
             robots_response = requests.get(robots_url)
             if robots_response is None:
                 return False
@@ -62,7 +62,11 @@ class SiteDownloader:
         logger.debug(f"Downloading {url}")
         can_fetch = True
         # Check if we're allowed to crawl the page
-        can_fetch = self.can_fetch(url)
+        try:
+            can_fetch = self.can_fetch(url)
+        except Exception as e:
+            logger.warning(f"Error checking robots.txt for {url}: {e}")
+
         if not can_fetch:
             msg = f"Skipping {url} (not allowed by robots.txt)"
             logger.info(msg)

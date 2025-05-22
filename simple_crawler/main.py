@@ -57,15 +57,15 @@ async def download_url_while_true(
     """
     downloader = SiteDownloader(manager, write_to_db)
     empty_count = 0
-    max_empty_count = 25
+    max_empty_count = 50
     running = True
     # Continue querying cache for new items
     # Stop when 25 cycle have passed without finding any new items
-    while running and empty_count <= max_empty_count:
+    while running:
         try:
             # Check redis list for new pages needing to be visited
             url = manager.crawl_tracker.get_page_to_visit()
-            if url == 0:
+            if url == 'exit':
                 logger.info("No more pages to visit, closing queue")
                 running = False
             if url:  # may be '' or None
@@ -88,8 +88,8 @@ async def download_url_while_true(
                             parse_queue.put((url, content)), timeout=1
                         )
                     logger.debug("try loop exit")
-                else:
-                    empty_count += 1
+            else:
+                empty_count += 1
             await asyncio.sleep(check_every)
             if empty_count > max_empty_count:
                 logger.info(
@@ -114,11 +114,11 @@ async def parse_while_true(
     links = []
     parser = Parser(manager, write_to_db)
     empty_count = 0
-    max_empty_count = 25
+    max_empty_count = 50
     # Continue parsing until 25 cycle have passed without finding any new items
     # More likely, the max page limit will be reached first, causing the downloader
     # to exit
-    while True and empty_count <= max_empty_count:
+    while not parse_queue.empty() and not (rdb.scard("download_requests") == 0):
         if not parse_queue.empty():
             empty_count = 0
             url, content = await asyncio.wait_for(parse_queue.get(), timeout=1)

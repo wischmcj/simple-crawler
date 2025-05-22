@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from dataclasses import dataclass
-from enum import Enum
 
 import redis
 from config.configuration import get_logger  # noqa
@@ -36,8 +34,10 @@ class CrawlTracker:
 
     def close_url(self, url_data: str) -> None:
         """Close a URL"""
-        self.completed_pages += 1
-        if self.completed_pages >= self.max_pages:
+        if int(url_data.get("req_status")) != 404:
+            self.completed_pages += 1
+            if self.completed_pages >= self.max_pages:
+                self.limit_reached = True
             self.rdb.publish("db", "exit")
         else:
             self.rdb.publish("db", json.dumps(url_data))
@@ -59,9 +59,9 @@ class CrawlTracker:
 
     def get_page_to_visit(self) -> list[str]:
         """Get all frontier seeds for a URL"""
-        if self.completed_pages >= self.max_pages:
+        if self.limit_reached:
             logger.warning("Max pages reached, closing queue")
-            return None
+            return "exit"
         url = self.rdb.lpop("to_visit")
         if url is not None:
             url = url.decode("utf-8")
