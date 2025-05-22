@@ -11,41 +11,6 @@ from config.configuration import get_logger  # noqa
 logger = get_logger("data")
 
 
-class CrawlStatus(Enum):
-    """Enum for tracking URL crawl status"""
-
-    SITE_MAP = "map_site"
-    FRONTIER = "frontier"
-    PARSE = "parse"
-    DB = "db"
-    ERROR = "error"
-    CLOSED = "closed"
-    DISALLOWED = "disallowed"
-
-
-class UrlAttributes(Enum):
-    """Enum for tracking URL attributes"""
-
-    HTML = "html"
-    SITEMAP_FREQUENCY = "sitemap_frequency"
-    SITEMAP_PRIORITY = "sitemap_priority"
-    LAST_MODIFIED = "last_modified"
-    STATUS = "status"
-
-
-@dataclass
-class URLData:
-    """`Data` structure for URL metadata"""
-
-    # URL first enters the cache when it is 'visited'
-    # e.g. a download attempt is made
-    url: str
-    content: str = ""
-    req_status: CrawlStatus = CrawlStatus.FRONTIER
-    crawl_status: CrawlStatus = CrawlStatus.FRONTIER
-    run_id: str = ""
-
-
 class CrawlTracker:
     """Track the status of a URL"""
 
@@ -54,7 +19,6 @@ class CrawlTracker:
         self.rdb = manager.rdb
         self.seed_url = manager.seed_url
         self.run_id = manager.run_id
-        self.urls = defaultdict(dict)
         self.completed_pages = 0
         self.max_pages = manager.max_pages
         self.urls = defaultdict(dict)
@@ -137,7 +101,7 @@ class URLCache:
         self.rdb.hset(url, "content", content)
         self.rdb.hset(url, "req_status", status)
 
-    def get_cached_response(self, url: str) -> URLData | None:
+    def get_cached_response(self, url: str):
         """Retrieve URL data from cache"""
         content, status = None, None
         bcontent = self.rdb.hget(url, "content")
