@@ -3,17 +3,12 @@ from __future__ import annotations
 import pytest
 import redis
 
-from simple_crawler.cache import CrawlTracker, URLCache
+from simple_crawler.cache import CrawlTracker
 
 
 @pytest.fixture
 def redis_conn():
     return redis.Redis(host="localhost", port=7777, decode_responses=False)
-
-
-@pytest.fixture
-def url_cache(redis_conn):
-    return URLCache(redis_conn)
 
 
 @pytest.fixture

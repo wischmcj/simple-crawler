@@ -25,27 +25,26 @@ handlers:
 loggers:
 
     main:
-        level: INFO
+        level: DEBUG
         handlers: [console]
-        propagate: no
+        propagate: yes
 
     data:
-        level: INFO
+        level: DEBUG
         handlers: [console]
-        propagate: no
+        propagate: yes
 
     parser:
-        level: INFO
+        level: DEBUG
         handlers: [console]
         propagate: yes
 
     downloader:
-        level: INFO
+        level: DEBUG
         handlers: [console]
         propagate: yes
 
 root:
     # By default, we display warning level logs from any library in the console
     # to match Python's default behavior while formatting logs nicely
-    level: INFO
-    # handlers: [console]
+    level: DEBUG
