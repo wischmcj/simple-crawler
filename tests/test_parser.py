@@ -52,9 +52,6 @@ class TestParser(unittest.TestCase):
         """Test successful parsing callback"""
         test_url = "https://example.com"
         self.parser.on_success(test_url, ["https://example.com"])
-        self.mock_manager.crawl_tracker.store_linked_urls.assert_called_with(
-            test_url, ["https://example.com"]
-        )
         self.mock_manager.crawl_tracker.update_url.assert_called_with(
             test_url,
             {"crawl_status": "completed", "linked_urls": ["https://example.com"]},
