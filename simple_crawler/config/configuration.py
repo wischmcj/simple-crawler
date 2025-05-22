@@ -34,7 +34,7 @@ def _load_console_log():
     logging.config.dictConfig(config)
 
 
-def get_logger(logger_name: str, log_file: str = None, log_level: int = logging.INFO):
+def get_logger(logger_name: str, log_file: str = None, log_level: int = None):
     """
     Returns a logger with at least the default console handler.
     If log_file is provided, it will either:
@@ -42,33 +42,9 @@ def get_logger(logger_name: str, log_file: str = None, log_level: int = logging.
      - repoint the file handler to a new file
     Likewise, if the log level is provided, it will update the log level of both handlers.
     """
-    logger = logging.getLogger(logger_name)
-    return_logger = logger
-    has_file_handler = any(
-        isinstance(handler, logging.FileHandler) for handler in logger.handlers
-    )
-    has_console_handler = any(
-        isinstance(handler, logging.StreamHandler) for handler in logger.handlers
-    )
-    if not has_console_handler:
-        _load_console_log()
-        return_logger = logging.getLogger(logger_name)
+    _load_console_log()
+    return_logger = logging.getLogger(logger_name)
+    if log_level:   
         for handler in return_logger.handlers:
             handler.setLevel(log_level)
-    if log_file is not None:
-        if has_file_handler:
-            file_handler = [
-                x for x in logger.handlers if isinstance(x, logging.FileHandler)
-            ][0]
-            if file_handler.stream.name != log_file:
-                file_handler.stream = open(log_file, "w")
-            if file_handler.level != log_level:
-                file_handler.setLevel(log_level)
-            return return_logger
-        else:
-            file_handler = logging.FileHandler(log_file, "w")
-            file_handler.setLevel(log_level)
-            return_logger.addHandler(file_handler)
-            return return_logger
-    else:
-        return return_logger
+    return return_logger

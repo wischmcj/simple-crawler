@@ -7,7 +7,7 @@ from config.configuration import get_logger
 
 # currently no used, but its nice to have
 # for debugging
-logger = get_logger("helper_classes")
+logger = get_logger("main")
 
 
 class BaseListener:

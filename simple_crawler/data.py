@@ -155,18 +155,25 @@ class BaseTable:
         self.cursor.execute(create_string)
         self.conn.commit()
 
-    def execute_query(self, query: str, params: tuple = ()):
+    def execute_query(
+        self, query: str, params: tuple = (), return_results: bool = False
+    ):
         """Execute a query"""
         logger.debug(f"Executing query: {query}")
-        for i in range(3):
-            try:
-                self.cursor.execute(query, params)
-                self.conn.commit()
-                return True
-            except sqlite3.OperationalError as e:
-                logger.error(f"Integrity error: {e}")
-                self.conn.rollback()
-                time.sleep(1)
+        if return_results:
+            self.cursor.execute(query, params)
+            res = self.cursor.fetchall()
+            return [dict(zip(self.columns, url)) for url in res]
+        else:
+            for i in range(3):
+                try:
+                    self.cursor.execute(query, params)
+                    self.conn.commit()
+                    return True
+                except sqlite3.OperationalError as e:
+                    logger.error(f"Integrity error: {e}")
+                    self.conn.rollback()
+                    time.sleep(1)
         return False
 
 
@@ -257,10 +264,10 @@ class UrlTable(BaseTable):
                FROM urls
                WHERE run_id = ?""",
             (run_id,),
+            return_results=True,
         )
         if res:
-            urls = self.cursor.fetchall()
-            return [dict(zip(self.columns, url)) for url in urls]
+            return res
         else:
             raise Exception("Failed to get URLs for run")
 
@@ -271,10 +278,10 @@ class UrlTable(BaseTable):
                FROM urls
                WHERE seed_url = ?""",
             (seed_url,),
+            return_results=True,
         )
         if res:
-            urls = self.cursor.fetchall()
-            return [dict(zip(self.columns, url)) for url in urls]
+            return res
         else:
             raise Exception("Failed to get URLs for seed URL")
 
@@ -307,7 +314,7 @@ class UrlTable(BaseTable):
             ]
             vals = ",".join(f"('{val_list}')" for val_list in val_lists)
             query = insert_query + vals
-            logger.info("running query", query)
+            logger.info(f"running query: {query}")
             _ = self.execute_query(
                 query,
             )
@@ -355,28 +362,10 @@ class SitemapTable(BaseTable):
                FROM sitemaps
                WHERE seed_url = ?""",
             (seed_url,),
+            return_results=True,
         )
         if res:
-            sitemaps = self.cursor.fetchall()
-            return list(
-                dict(
-                    zip(
-                        [
-                            "run_id",
-                            "seed_url",
-                            "url",
-                            "index_url",
-                            "loc",
-                            "priority",
-                            "frequency",
-                            "modified",
-                            "status",
-                        ],
-                        sitemap,
-                    )
-                )
-                for sitemap in sitemaps
-            )
+            return res
         else:
             raise Exception("Failed to get sitemaps for seed URL")
 

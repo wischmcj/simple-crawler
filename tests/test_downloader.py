@@ -30,8 +30,8 @@ def test_on_success(downloader):
     downloader.on_success(url, content, status_code)
 
     downloader.cache.update_content.assert_called_once_with(url, content, status_code)
-    downloader.crawl_tracker.update_status.assert_called_once_with(
-        url, "downloaded", 200
+    downloader.crawl_tracker.update_url.assert_called_once_with(
+        url, {"crawl_status": "downloaded", "req_status": 200}
     )
 
 
@@ -42,13 +42,13 @@ def test_on_failure(downloader):
     content = "<html>error</html>"
     status_code = 404
 
-    downloader.crawl_tracker.update_status.return_value = {"some": "data"}
+    downloader.crawl_tracker.update_url.return_value = {"some": "data"}
 
     downloader.on_failure(url, crawl_status, content, status_code)
 
     downloader.cache.update_content.assert_called_once_with(url, content, status_code)
-    downloader.crawl_tracker.update_status.assert_called_once_with(
-        url, crawl_status, 404
+    downloader.crawl_tracker.update_url.assert_called_once_with(
+        url, {"crawl_status": "error", "req_status": 404}, close=True
     )
 
 
@@ -66,8 +66,8 @@ def test_get_page_elements_disallowed(mock_requests, downloader):
         mock_requests.get.assert_not_called()
         # I had trouble mocking on_failure, so I just confirmed the contained methods were called
         downloader.cache.update_content.assert_called_once_with(url, "", status)
-        downloader.crawl_tracker.update_status.assert_called_once_with(
-            url, "disallowed", 403
+        downloader.crawl_tracker.update_url.assert_called_once_with(
+            url, {"crawl_status": "disallowed", "req_status": 403}, close=True
         )
 
 
@@ -94,6 +94,6 @@ def test_get_page_elements_success(mock_requests, downloader):
         downloader.cache.update_content.assert_called_once_with(
             url, response_content, status_code
         )
-        downloader.crawl_tracker.update_status.assert_called_once_with(
-            url, "downloaded", 200
+        downloader.crawl_tracker.update_url.assert_called_once_with(
+            url, {"crawl_status": "downloaded", "req_status": 200}
         )
