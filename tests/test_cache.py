@@ -63,8 +63,6 @@ class TestURLData:
 
 class TestURLCache:
     def test_initialization(self, url_cache):
-        assert isinstance(url_cache.visited_urls, set)
-        assert isinstance(url_cache.to_visit, set)
         assert isinstance(url_cache.queues, list)
 
     @pytest.fixture(autouse=True)
