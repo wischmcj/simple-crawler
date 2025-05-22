@@ -47,12 +47,12 @@ class Parser:
         """Callback for when a job succeeds"""
         self.crawl_tracker.store_linked_urls(url, links)
         update_dict = {"crawl_status": "completed", "linked_urls": links}
-        _ = self.crawl_tracker.update_status(url, update_dict)
+        _ = self.crawl_tracker.update_url(url, update_dict)
 
     def on_failure(self, url):
         """Callback for when a job fails"""
         update_dict = {"crawl_status": "error"}
-        _ = self.crawl_tracker.update_status(url, update_dict, close=True)
+        _ = self.crawl_tracker.update_url(url, update_dict, close=True)
 
     # Crawling Logic
     def parse(self, url, content):

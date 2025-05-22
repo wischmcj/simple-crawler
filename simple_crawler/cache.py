@@ -30,7 +30,7 @@ class CrawlTracker:
             "max_pages": self.max_pages,
         }
         self.urls[url] = init_vals
-        self.update_status(url, {"crawl_status": "started"}, close=False)
+        self.update_url(url, {"crawl_status": "started"}, close=False)
 
     def store_linked_urls(self, parent_url: str, links: list[str]) -> None:
         """Update the parent URL for a URL"""
@@ -46,7 +46,7 @@ class CrawlTracker:
             self.rdb.publish("db", json.dumps(url_data))
         return url_data
 
-    def update_status(self, url: str, update_dict: dict, close: bool = False) -> None:
+    def update_url(self, url: str, update_dict: dict, close: bool = False) -> None:
         """
         Progresses the status of the URL through the crawl pipeline.
         If and error state is passed, the url is closed and removed from the cache.

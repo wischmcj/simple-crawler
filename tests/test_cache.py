@@ -10,6 +10,11 @@ def url_cache(redis_conn):
     return URLCache(redis_conn)
 
 @pytest.fixture
+def url_cache(redis_conn):
+    return URLCache(redis_conn)
+
+
+@pytest.fixture
 def crawl_tracker(redis_conn):
     return CrawlTracker(redis_conn)
 

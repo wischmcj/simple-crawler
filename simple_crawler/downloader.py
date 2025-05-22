@@ -44,12 +44,12 @@ class SiteDownloader:
     def on_success(self, url: str, content: str, status_code: int):
         self.cache.update_content(url, content, status_code)
         update_dict = {"crawl_status": "downloaded", "req_status": status_code}
-        _ = self.crawl_tracker.update_status(url, update_dict)
+        _ = self.crawl_tracker.update_url(url, update_dict)
 
     def on_failure(self, url: str, crawl_status: str, content: str, status_code: int):
         self.cache.update_content(url, content, status_code)
         update_dict = {"crawl_status": crawl_status, "req_status": status_code}
-        _ = self.crawl_tracker.update_status(url, update_dict, close=True)
+        _ = self.crawl_tracker.update_url(url, update_dict, close=True)
 
     def get_page_elements(self, url: str, cache_results: bool = True) -> set[str]:
         """Get the page elements from a webpage"""

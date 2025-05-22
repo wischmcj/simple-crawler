@@ -38,7 +38,7 @@ class Manager:
     ):
         if run_id is None:
             formatted_datetime = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            logger.info("Formatted datetime:", formatted_datetime)
+            logger.info(f"Formatted datetime: {formatted_datetime}")
             self.run_id = formatted_datetime
         else:
             self.run_id = run_id
