@@ -28,27 +28,18 @@ from rq import Queue, Worker
 #     app.run(host='0.0.0.0', port=5000)
 
 
-
 rdb = redis.Redis(host="localhost", port=7777)
 
 
-def hello_world():
-    return print("message")
-
-
-def rq_crawl():
+def rq_crawl(url: str, max_pages: int, retries: int, check_every: int):
     rdb.delete("to_visit")
     rdb.delete("download_requests")
     rdb.delete("parse_requests")
 
     queue = Queue(connection=rdb, name="test")
-    queue.enqueue(crawl)
+    queue.enqueue(crawl, url, max_pages, retries, check_every)
 
     worker = Worker(queue, connection=rdb)
     worker.work(burst=True)
 
     print("hi")
-
-
-if __name__ == "__main__":
-    rq_crawl()

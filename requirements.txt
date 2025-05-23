@@ -11,6 +11,7 @@ distlib==0.3.9
 dlt[duckdb]>=1.11.0
 fakeredis @ git+https://github.com/cunla/fakeredis-py@190f613
 filelock==3.18.0
+flask>=3.0.0
 identify==2.6.10
 isort>=5.10.1
 loguru>=0.7.0
@@ -36,10 +37,9 @@ PyYAML==6.0.2
 redis>=6.1.0
 requests>=2.31.0
 rich>=14.0.0
-ruff==0.11.8
-flask>=3.0.0
 rq>=2.0.0
 rq-dashboard>=0.6.0
+ruff==0.11.8
 
 # Database
 sqlalchemy>=2.0.0
