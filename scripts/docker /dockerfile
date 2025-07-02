@@ -1,0 +1,18 @@
+# base image
+FROM python:3.10-alpine
+
+# set working directory
+RUN mkdir -p /usr/src/simple_crawler
+WORKDIR /usr/src/simple_crawler
+
+# add requirements (to leverage Docker cache)
+ADD ./requirements.txt /usr/src/simple_crawler/requirements.txt
+
+# install requirements
+RUN pip install -r requirements.txt
+
+# copy project
+COPY . /usr/src/simple_crawler
+
+# run the command
+CMD ["python", "simple_crawler/cli.py"]
