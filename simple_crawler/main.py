@@ -13,6 +13,7 @@ from config.configuration import (RDB_FILE, REDIS_HOST, REDIS_PORT,
 from downloader import SiteDownloader
 from manager import Manager
 from mapper import SiteMapper
+from rq import Worker
 
 logger = get_logger("main")
 
@@ -65,7 +66,7 @@ async def download_url_while_true(
         try:
             # Check redis list for new pages needing to be visited
             url = manager.crawl_tracker.get_page_to_visit()
-            if url == 'exit':
+            if url == "exit":
                 logger.info("No more pages to visit, closing queue")
                 running = False
             if url:  # may be '' or None
@@ -139,7 +140,7 @@ async def parse_while_true(
     return links
 
 
-def crawl(
+def local_crawl(
     seed_url: str,
     max_pages: int = 100,
     retries: int = 3,
@@ -165,6 +166,30 @@ def crawl(
     )
     time.sleep(3)
     return links
+
+
+def rq_crawl(url: str, max_pages: int, retries: int, check_every: int):
+    queue = Queue(connection=rdb, name="test")
+    queue.enqueue(crawl, url, max_pages, retries, check_every)
+
+    worker = Worker(queue, connection=rdb)
+    worker.work(burst=True)
+
+    print("hi")
+
+
+def crawl(
+    seed_url: str,
+    max_pages: int = 100,
+    retries: int = 3,
+    write_to_db: bool = True,
+    check_every: float = 1,
+    rq_crawl: bool = False,
+):
+    if rq_crawl:
+        return rq_crawl(seed_url, max_pages, retries, check_every)
+    else:
+        return local_crawl(seed_url, max_pages, retries, write_to_db, check_every)
 
 
 if __name__ == "__main__":

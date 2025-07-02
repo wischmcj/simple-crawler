@@ -33,13 +33,21 @@ A polite and efficient web crawler that respects robots.txt rules and implements
    - [Mac](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/install-redis-on-mac-os/)
     **disclaimer - this tool was developed and tested on ubuntu.
 
-5. Set the values of key configuration variable
+5. (OPTIONAL) Install the rq-dashbaord cli. This enables a user to submit/monitor jobs through the rq-dashboard flask application.
+   - [Install Instructions](https://python-rq.org/docs/monitoring/)
+    - If you choose to do so, youll likewise need to set an environment variable to tell rq where your redis server is running
+      - ```bash
+            export RQ_DASHBOARD_REDIS_URL='redis://127.0.0.1:7777'
+            rq-dashboard
+        ```
+
+6. Set the values of key configuration variable
     ```bash
     export SIMPLE_CRAWLER_LOG_CONFIG="<your-root-dir>/simple_crawler/simple_crawler/config/logging_config.yml"
     ```
     - Note: there are many different configurable environment variables available, though this is the only required one. You can find these in the simpler_crawler/config/configuration.py file and (for direnv users) in the .envrc.dist file
 
-6. Optionally, logging can be configured using the simpler_crawler/config/logging_config.yml file.
+7. Optionally, logging can be configured using the simpler_crawler/config/logging_config.yml file.
 
 
 ## Usage
@@ -59,11 +67,19 @@ The below is a quick start-up guide for running this project. The commands provi
 ```
    - Note: if you have existing programs running on port 7777
 
-4. Call the CLI as follows
+4. (OPTIONAL) If you installed rq-dashboard in the installation process, start your rq dashboard now with the below command
 ```bash
-   python3 simple_crawler/cli.py 'https://overstory.com'
+    expor
+   rq-dashboard
 ```
-5. The links scrapped from the website requested will be printed to the console. However, users may find it easier to access the results within the results database. The file 'data_conn.py' (contents copied below) demonstrates how this can be done. As shown below, your data should be saved in a directory under simpler_crawler named based on the date and time the program was run:
+
+5. Call the CLI as follows
+```bash
+    python3 simple_crawler/cli.py 'https://overstory.com'
+    # or
+    python3 simple_crawler/cli.py 'https://www.overstory.com' --rq-crawl=True #to run within the rq-dashbaord wrapper
+```
+6. The links scrapped from the website requested will be printed to the console. However, users may find it easier to access the results within the results database. The file 'data_conn.py' (contents copied below) demonstrates how this can be done. As shown below, your data should be saved in a directory under simpler_crawler named based on the date and time the program was run:
 ```bash
     db_file = "simple_crawler/data/2025_05_12_20_37_33/sqlite.db"
     conn = sqlite3.connect(db_file)
@@ -77,6 +93,10 @@ The below is a quick start-up guide for running this project. The commands provi
 - `url` (required): The starting URL to crawl
 - `--max-pages`: Maximum number of pages to crawl (default: 10)
 - `--delay`: Delay between requests in seconds (default: 1.0)
+
+7. (OPTIONAL) If you installed rq-dashboard and ran with --rq-crawl=True, you can navigate to http://0.0.0.0:9181/ to track the status of your request
+
+
 
 ### Examples
 
