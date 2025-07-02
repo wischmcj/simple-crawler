@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../HomeLab/ext_examples/flask-gradient-able"
+		}
+	],
+	"settings": {}
+}

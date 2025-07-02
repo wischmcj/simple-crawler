@@ -76,7 +76,7 @@ The below is a quick start-up guide for running this project. The commands provi
 5. Call the CLI as follows
 ```bash
     python3 simple_crawler/cli.py 'https://overstory.com'
-    # or 
+    # or
     python3 simple_crawler/cli.py 'https://www.overstory.com' --rq-crawl=True #to run within the rq-dashbaord wrapper
 ```
 6. The links scrapped from the website requested will be printed to the console. However, users may find it easier to access the results within the results database. The file 'data_conn.py' (contents copied below) demonstrates how this can be done. As shown below, your data should be saved in a directory under simpler_crawler named based on the date and time the program was run:
@@ -94,7 +94,7 @@ The below is a quick start-up guide for running this project. The commands provi
 - `--max-pages`: Maximum number of pages to crawl (default: 10)
 - `--delay`: Delay between requests in seconds (default: 1.0)
 
-7. (OPTIONAL) If you installed rq-dashboard and ran with --rq-crawl=True, you can navigate to http://0.0.0.0:9181/ to track the status of your request 
+7. (OPTIONAL) If you installed rq-dashboard and ran with --rq-crawl=True, you can navigate to http://0.0.0.0:9181/ to track the status of your request
 
 
 
