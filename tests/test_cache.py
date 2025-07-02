@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import pytest
-import redis
 
-from simple_crawler.cache import CrawlStatus, CrawlTracker, URLCache, URLData
+from simple_crawler.cache import CrawlTracker, URLCache
 
 
 @pytest.fixture
-def redis_conn():
-    return redis.Redis(host="localhost", port=7777, decode_responses=False)
-
+def url_cache(redis_conn):
+    return URLCache(redis_conn)
 
 @pytest.fixture
 def url_cache(redis_conn):
@@ -33,38 +31,28 @@ def sample_html_content():
 
 @pytest.fixture
 def sample_url_data(sample_url, sample_html_content):
-    return URLData(
-        url=sample_url,
-        content=sample_html_content,
-        req_status=200,
-        crawl_status=CrawlStatus.FRONTIER.value,
-        run_id="test_run",
-    )
+    return {
+        "url": sample_url,
+        "content": sample_html_content,
+        "req_status": 200,
+        "crawl_status": "frontier",
+        "run_id": "test_run",
+    }
 
 
 @pytest.fixture
 def sample_failed_url_data(sample_url):
-    return URLData(
-        url=sample_url,
-        content=sample_html_content,
-        req_status=404,
-        crawl_status=CrawlStatus.ERROR.value,
-        run_id="test_run",
-    )
-
-
-class TestURLData:
-    def test_url_data_creation(self, sample_url_data):
-        assert sample_url_data.url == "https://example.com"
-        assert sample_url_data.req_status == 200
-        assert sample_url_data.crawl_status == CrawlStatus.FRONTIER.value
-        assert isinstance(sample_url_data.content, str)
+    return {
+        "url": sample_url,
+        "content": sample_html_content,
+        "req_status": 404,
+        "crawl_status": "error",
+        "run_id": "test_run",
+    }
 
 
 class TestURLCache:
     def test_initialization(self, url_cache):
-        assert isinstance(url_cache.visited_urls, set)
-        assert isinstance(url_cache.to_visit, set)
         assert isinstance(url_cache.queues, list)
 
     @pytest.fixture(autouse=True)

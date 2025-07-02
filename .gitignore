@@ -13,3 +13,4 @@ unused_code/events_db.py
 *.rdb
 *simple_crawler/data/*
 unused_code/*
+simple_crawler/.dlt/secrets.toml

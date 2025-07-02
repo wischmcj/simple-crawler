@@ -34,10 +34,11 @@ class Manager:
         db_file=SQLITE_DB_FILE,
         rdb_file=RDB_FILE,
         run_id=None,
+        redis_conn=None,
     ):
         if run_id is None:
             formatted_datetime = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-            logger.info("Formatted datetime:", formatted_datetime)
+            logger.info(f"Formatted datetime: {formatted_datetime}")
             self.run_id = formatted_datetime
         else:
             self.run_id = run_id
@@ -48,15 +49,11 @@ class Manager:
         self.is_async = not debug
         self.db_file = db_file
         self.rdb_file = rdb_file
-        self.rdb = redis.Redis(host=host, port=port, decode_responses=False)
+        self._init_redis(host, port, redis_conn)
         self._init_dirs()
         self._init_pubsub()
         self._init_db()
         self._init_cache()
-
-        self.visited_urls = set()
-        self.to_visit = set()
-        self.listeners = []
 
     def get_run_data(self):
         data = {}
@@ -66,6 +63,12 @@ class Manager:
         data["retries"] = self.retries
         data["is_async"] = self.is_async
         return data
+
+    def _init_redis(self, host=None, port=None, redis_conn=None):
+        if redis_conn is None:
+            self.rdb = redis.Redis(host=host, port=port, decode_responses=False)
+        else:
+            self.rdb = redis_conn
 
     def _init_dirs(self):
         self.data_dir = os.path.join(os.path.dirname(__file__), DATA_DIR)
@@ -90,7 +93,7 @@ class Manager:
 
     def _init_cache(self):
         self.cache = URLCache(self.rdb)
-        self.crawl_tracker = CrawlTracker(manager=self, url_pubsub=self.url_pubsub)
+        self.crawl_tracker = CrawlTracker(manager=self)
 
     def shutdown(self):
         """Shutdown the manager"""
