@@ -1,6 +1,7 @@
 # Simple Web Crawler
+<em>Now, I'm just simple, small town crawler trying to do the best I can... </em>
+
 <img src="docs/MrCrawly.png" width="400">
-*Now, I'm just simple, small town crawler trying to do the best I can... *
 
 A somewhat-time-limited web-crawler exercise
 A polite and efficient web crawler that respects robots.txt rules and implements rate limiting.
